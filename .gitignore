@@ -1,0 +1,8 @@
+
+# .gitignore
+
+mydhcp/obj/*
+mydhcps
+mydhcpc
+mydhcps.conf
+
