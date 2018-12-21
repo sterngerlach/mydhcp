@@ -2,15 +2,20 @@
 # 情報工学科3年 学籍番号61610117 杉浦 圭祐
 # Makefile
 
+# gcc 4.4.7 does not support -Wpedantic option
+
 CC = gcc
-CFLAGS = -Os -Wall -Wextra -Wpedantic
+CFLAGS = -Os -Wall -Wextra
 LDFLAGS = 
 
 OBJDIR = ./obj
 OUTDIR = .
 
 TARGET_SERVER = $(OUTDIR)/mydhcps
-OBJECTS_SERVER = $(addprefix $(OBJDIR)/, mydhcps.o config.o util.o)
+OBJECTS_SERVER = $(addprefix $(OBJDIR)/, \
+	mydhcps.o mydhcps_alarm.o mydhcps_config.o \
+	mydhcps_ip_addr_list.o mydhcps_client_list.o mydhcps_state_machine.o \
+	util.o)
 
 server: $(TARGET_SERVER)
 

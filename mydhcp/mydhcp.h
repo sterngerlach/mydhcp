@@ -23,23 +23,5 @@ struct dhcp_header {
     in_addr_t   mask;
 };
 
-/*
- * 接続されたクライアントの情報を保持する構造体
- */
-struct dhcp_client_list_entry {
-    struct list_entry   list_entry;
-    int16_t             status;
-    uint16_t            ttl_counter;
-    struct in_addr      id;
-    struct in_addr      addr;
-    struct in_addr      mask;
-    uint16_t            ttl;
-};
-
-/*
- * 接続されたクライアントのリストの先頭
- */
-struct dhcp_client_list_entry dhcp_client_list_head;
-
 #endif /* MYDHCP_H */
 
