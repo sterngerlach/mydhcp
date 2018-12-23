@@ -7,17 +7,6 @@
 #include "mydhcps_state_machine.h"
 
 /*
- * サーバの状態遷移を表す配列
- */
-struct dhcp_server_state_transition server_state_transition_table[] = {
-    {
-        .state = DHCP_SERVER_STATE_NONE,
-        .event = DHCP_SERVER_EVENT_NONE,
-        .handler = NULL
-    },
-};
-
-/*
  * サーバの状態を表す列挙体を文字列に変換
  */
 const char* dhcp_server_state_to_string(enum dhcp_server_state state)
@@ -71,9 +60,10 @@ const char* dhcp_server_event_to_string(enum dhcp_server_event event)
  * サーバの現在の状態とイベントに対する遷移関数の取得
  */
 dhcp_server_event_handler lookup_server_state_transition_table(
+    const struct dhcp_server_state_transition* server_state_transition_table,
     enum dhcp_server_state state, enum dhcp_server_event event)
 {
-    struct dhcp_server_state_transition* trans;
+    const struct dhcp_server_state_transition* trans;
 
     for (trans = server_state_transition_table;
         trans->state != DHCP_SERVER_STATE_NONE; ++trans)

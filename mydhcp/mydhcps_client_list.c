@@ -66,6 +66,7 @@ void dump_client_list(FILE* fp, const struct dhcp_client_list_entry* list_head)
 bool append_dhcp_client(
     struct dhcp_client_list_entry* list_head,
     struct in_addr id,
+    in_port_t port,
     enum dhcp_server_state state,
     uint16_t ttl_counter)
 {
@@ -86,8 +87,9 @@ bool append_dhcp_client(
     new_entry->state = state;
     new_entry->ttl_counter = ttl_counter;
     new_entry->id = id;
+    new_entry->port = port;
     new_entry->addr.s_addr = htonl(0);
-    new_entry->mask.s_addr = htonl(0xFFFFFFFF);
+    new_entry->mask.s_addr = htonl(0);
     new_entry->ttl = htons(0);
 
     /* クライアントをリストに追加 */
@@ -110,6 +112,18 @@ void remove_dhcp_client(
     /* メモリ領域の解放 */
     free(client);
     client = NULL;
+}
+
+/*
+ * 指定されたクライアントにIPアドレスが割り当てられているかどうかを判定
+ */
+bool is_ip_address_assigned_to_dhcp_client(
+    struct dhcp_client_list_entry* client)
+{
+    assert(client != NULL);
+
+    /* アドレスが0.0.0.0であれば割り当てられていないと判定 */
+    return client->addr.s_addr != htonl(0);
 }
 
 /*

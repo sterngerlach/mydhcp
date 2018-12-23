@@ -27,19 +27,659 @@
 #include "util.h"
 
 /*
+ * サーバを終了するかどうかを保持するフラグ
+ */
+static volatile sig_atomic_t app_exit;
+
+/*
  * 疑似DHCPサーバの設定
  */
-struct dhcp_server_config dhcp_server_config;
+static struct dhcp_server_config dhcp_server_config;
 
 /*
  * 疑似DHCPサーバが割り当て可能なIPアドレスのリスト
  */
-struct ip_addr_list_entry* available_ip_addr_list_head;
+static struct ip_addr_list_entry* available_ip_addr_list_head;
 
 /*
  * 接続されたクライアントのリスト
  */
-struct dhcp_client_list_entry dhcp_client_list_head;
+static struct dhcp_client_list_entry dhcp_client_list_head;
+
+/*
+ * クライアントとの接続の終了処理
+ */
+void on_disconnect_client(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    assert(client != NULL);
+
+    (void)received_header;
+    (void)server_sock;
+    
+    /* クライアントにIPアドレスが割り当てられている場合は,
+     * 割り当てたIPアドレスとサブネットマスクの組を元に戻す */
+    if (is_ip_address_assigned_to_dhcp_client(client)) {
+        if (!recall_ip_addr(available_ip_addr_list_head, client->addr, client->mask))
+            print_error(__func__,
+                        "recall_ip_addr() failed: ip address %s will never be available\n",
+                        inet_ntoa(client->addr));
+        else
+            print_message(__func__,
+                          "recall_ip_addr() called: ip address %s is available again\n",
+                          inet_ntoa(client->addr));
+    }
+
+    /* クライアントの情報をリンクリストから削除 */
+    print_message(__func__,
+                  "remove_dhcp_client() called: client %s (port: %" PRIu16 "disconnected\n",
+                  inet_ntoa(client->id), client->port);
+
+    remove_dhcp_client(client);
+
+    return;
+}
+
+/*
+ * DISCOVERメッセージを受信した際の処理
+ */
+void on_discover_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct in_addr addr;
+    struct in_addr mask;
+    ssize_t send_bytes;
+    struct sockaddr_in client_addr;
+
+    char addr_str[INET_ADDRSTRLEN];
+    char mask_str[INET_ADDRSTRLEN];
+
+    assert(received_header != NULL);
+    assert(client != NULL);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+
+    /* 割り当て可能なIPアドレスを取得 */
+    /* 割り当て可能なIPアドレスがない場合 */
+    if (!get_available_ip_addr(available_ip_addr_list_head, &addr, &mask)) {
+        print_error(__func__, "get_available_ip_addr() failed: no available ip address found\n");
+
+        /* OFFERメッセージを作成 */
+        memset(&header, 0, sizeof(struct dhcp_header));
+        header.type = DHCP_HEADER_TYPE_OFFER;
+        header.code = DHCP_HEADER_CODE_OFFER_NG;
+        
+        /* OFFERメッセージを送信 */
+        send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                            (struct sockaddr*)&client_addr, sizeof(client_addr));
+        
+        /* 送信に失敗した場合 */
+        if (send_bytes < 0) {
+            print_error(__func__,
+                        "sendto() failed: %s, could not send dhcp header to client %s\n",
+                        strerror(errno), inet_ntoa(client->id));
+            /* クライアントとの接続を終了 */
+            on_disconnect_client(received_header, client, server_sock);
+            return;
+        }
+        
+        /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+        if (send_bytes != sizeof(struct dhcp_header)) {
+            print_error(__func__,
+                        "could not send full dhcp header to client %s\n",
+                        inet_ntoa(client->id));
+            /* クライアントとの接続を終了 */
+            on_disconnect_client(received_header, client, server_sock);
+            return;
+        }
+
+        print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+        dump_dhcp_header(stderr, &header);
+
+        return;
+    }
+    
+    /* IPアドレス(ネットワークバイトオーダー)を文字列に変換 */
+    if (inet_ntop(AF_INET, &addr, addr_str, sizeof(addr_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        *addr_str = '\0';
+    }
+    
+    /* サブネットマスク(ネットワークバイトオーダー)を文字列に変換 */
+    if (inet_ntop(AF_INET, &mask, mask_str, sizeof(mask_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        *mask_str = '\0';
+    }
+
+    /* クライアントに割り当てたIPアドレス, サブネットマスクの組とTTLを出力 */
+    print_message(__func__,
+                  "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client %s\n",
+                  addr_str, mask_str, dhcp_server_config.ttl);
+    
+    /* 割り当て可能なIPアドレスが存在 */
+    /* OFFERメッセージを作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_OFFER;
+    header.code = DHCP_HEADER_CODE_OFFER_OK;
+    header.ttl = htons(dhcp_server_config.ttl);
+    header.addr = addr.s_addr;
+    header.mask = mask.s_addr;
+
+    /* OFFERメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send full dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+
+    print_message(__func__, "client %s state changed from %s to %s\n",
+                  inet_ntoa(client->id),
+                  dhcp_server_state_to_string(client->state),
+                  dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST));
+
+    /* クライアントの情報を更新 */
+    /* ttl_counterメンバはタイムアウトまでの秒数を保持 */
+    /* addr, maskメンバは割り当てる予定のIPアドレスとサブネットマスクを保持 */
+    /* ttlメンバはデフォルトのIPアドレスの使用期限を保持 */
+    /* REQUESTメッセージのttlフィールドの値によってttlメンバは変化し得る */
+    client->state = DHCP_SERVER_STATE_WAIT_REQUEST;
+    client->ttl_counter = TIMEOUT_VALUE;
+    client->addr = addr;
+    client->mask = mask;
+    client->ttl = htons(dhcp_server_config.ttl);
+
+    return;
+}
+
+/*
+ * REQUESTメッセージ(IPアドレスの割り当て要求)を受信した際の処理
+ */
+void on_alloc_request_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct sockaddr_in client_addr;
+    ssize_t send_bytes;
+    
+    assert(received_header != NULL);
+    assert(client != NULL);
+    assert(client->addr.s_addr == received_header->addr);
+    assert(client->mask.s_addr == received_header->mask);
+    assert(ntohs(received_header->ttl) <= dhcp_server_config.ttl);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+
+    /* ACKメッセージを作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_ACK;
+    header.code = DHCP_HEADER_CODE_ACK_OK;
+    header.ttl = received_header->ttl;
+    header.addr = client->addr.s_addr;
+    header.mask = client->mask.s_addr;
+
+    /* ACKメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+    
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+
+    print_message(__func__, "client %s state changed from %s to %s\n",
+                  inet_ntoa(client->id),
+                  dhcp_server_state_to_string(client->state),
+                  dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
+
+    /* クライアントの情報を更新 */
+    client->state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE;
+    client->ttl_counter = ntohs(received_header->ttl);
+    client->ttl = received_header->ttl;
+
+    return;
+}
+
+/*
+ * 不正なREQUESTメッセージ(IPアドレスの割り当て要求)を受信した際の処理
+ */
+void on_invalid_alloc_request_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct sockaddr_in client_addr;
+    ssize_t send_bytes;
+
+    assert(received_header != NULL);
+    assert(client != NULL);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+
+    /* ACKメッセージを作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_ACK;
+    header.code = DHCP_HEADER_CODE_ACK_NG;
+    
+    /* ACKメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+
+    print_message(__func__,
+                  "invalid ip address allocation request received, "
+                  "therefore connection to client %s will be shut down\n",
+                  inet_ntoa(client->id));
+
+    /* クライアントとの接続を終了 */
+    on_disconnect_client(received_header, client, server_sock);
+    
+    return;
+}
+
+/*
+ * REQUESTメッセージの受信がタイムアウトした際の処理
+ */
+void on_wait_request_timeout(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct sockaddr_in client_addr;
+    ssize_t send_bytes;
+
+    assert(received_header == NULL);
+    assert(client != NULL);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+
+    /* OFFERメッセージを作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_OFFER;
+    header.code = DHCP_HEADER_CODE_OFFER_OK;
+    header.ttl = htons(dhcp_server_config.ttl);
+    header.addr = client->addr.s_addr;
+    header.mask = client->mask.s_addr;
+
+    /* OFFERメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+    
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+
+    print_message(__func__, "client %s state changed from %s to %s\n",
+                  inet_ntoa(client->id),
+                  dhcp_server_state_to_string(client->state),
+                  dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST_RETRY));
+
+    /* クライアントの情報を更新 */
+    client->state = DHCP_SERVER_STATE_WAIT_REQUEST_RETRY;
+    client->ttl_counter = TIMEOUT_VALUE;
+    client->ttl = htons(dhcp_server_config.ttl);
+    
+    return;
+}
+
+/*
+ * REQUESTメッセージ(使用期間の延長要求)を受信した際の処理
+ */
+void on_time_ext_request_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct sockaddr_in client_addr;
+    ssize_t send_bytes;
+
+    assert(received_header != NULL);
+    assert(client != NULL);
+    assert(client->addr.s_addr == received_header->addr);
+    assert(client->mask.s_addr == received_header->mask);
+    assert(ntohs(received_header->ttl) <= dhcp_server_config.ttl);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+    
+    /* ACKメッセージを作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_ACK;
+    header.code = DHCP_HEADER_CODE_ACK_OK;
+    header.ttl = client->ttl;
+    header.addr = client->addr.s_addr;
+    header.mask = client->mask.s_addr;
+
+    /* ACKメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+
+    print_message(__func__, "client %s state changed from %s to %s\n",
+                  inet_ntoa(client->id),
+                  dhcp_server_state_to_string(client->state),
+                  dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
+    
+    /* クライアントの情報を更新 */
+    client->state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE;
+    client->ttl_counter = ntohs(client->ttl);
+    
+    return;
+}
+
+/*
+ * 不正なREQUESTメッセージ(使用期間の延長要求)を受信した際の処理
+ */
+void on_invalid_time_ext_request_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    struct dhcp_header header;
+    struct sockaddr_in client_addr;
+    ssize_t send_bytes;
+
+    assert(received_header != NULL);
+    assert(client != NULL);
+
+    /* クライアントのアドレス構造体を作成 */
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = client->port;
+    client_addr.sin_addr = client->id;
+
+    /* ACKメッセージを送信 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_ACK;
+    header.code = DHCP_HEADER_CODE_ACK_NG;
+    
+    /* ACKメッセージを送信 */
+    send_bytes = sendto(server_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to client %s\n",
+                    strerror(errno), inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send dhcp header to client %s\n",
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+        return;
+    }
+    
+    print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
+    dump_dhcp_header(stderr, &header);
+    
+    print_message(__func__,
+                  "invalid time extension request received, "
+                  "therefore connection to client %s will be shut down\n",
+                  inet_ntoa(client->id));
+
+    /* クライアントとの接続を終了 */
+    on_disconnect_client(received_header, client, server_sock);
+
+    return;
+}
+
+/*
+ * RELEASEメッセージを受信した際の処理
+ */
+void on_release_received(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    assert(received_header != NULL);
+    assert(client != NULL);
+
+    print_message(__func__,
+                  "release message received, "
+                  "therefore connection to client %s will be shut down\n",
+                  inet_ntoa(client->id));
+
+    /* クライアントとの接続を終了 */
+    on_disconnect_client(received_header, client, server_sock);
+}
+
+/*
+ * IPアドレスの使用期限を過ぎた際の処理
+ */
+void on_ip_address_ttl_timeout(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_list_entry* client,
+    int server_sock)
+{
+    char id_str[INET_ADDRSTRLEN];
+    char addr_str[INET_ADDRSTRLEN];
+
+    assert(received_header == NULL);
+    assert(client != NULL);
+
+    /* クライアントのID(ネットワークバイトオーダー)を文字列に変換 */
+    if (inet_ntop(AF_INET, &client->id, id_str, sizeof(id_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        *id_str = '\0';
+    }
+
+    /* クライアントに割り当てたIPアドレス(ネットワークバイトオーダー)を文字列に変換 */
+    if (inet_ntop(AF_INET, &client->addr, addr_str, sizeof(addr_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        *addr_str = '\0';
+    }
+
+    print_message(__func__,
+                  "ttl of ip address %s assigned to client %s expired, "
+                  "therefore connection to client %s will be shut down\n",
+                  addr_str, id_str, id_str);
+
+    /* クライアントとの接続を終了 */
+    on_disconnect_client(received_header, client, server_sock);
+}
+
+/*
+ * サーバの状態遷移を表す配列
+ */
+struct dhcp_server_state_transition server_state_transition_table[] = {
+    {
+        .state = DHCP_SERVER_STATE_INIT,
+        .event = DHCP_SERVER_EVENT_DISCOVER,
+        .handler = on_discover_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST,
+        .event = DHCP_SERVER_EVENT_ALLOC_REQUEST,
+        .handler = on_alloc_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST,
+        .event = DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST,
+        .handler = on_invalid_alloc_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST,
+        .event = DHCP_SERVER_EVENT_TTL_TIMEOUT,
+        .handler = on_wait_request_timeout
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST_RETRY,
+        .event = DHCP_SERVER_EVENT_ALLOC_REQUEST,
+        .handler = on_alloc_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST_RETRY,
+        .event = DHCP_SERVER_EVENT_TTL_TIMEOUT,
+        .handler = on_disconnect_client
+    },
+    {
+        .state = DHCP_SERVER_STATE_WAIT_REQUEST_RETRY,
+        .event = DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST,
+        .handler = on_invalid_alloc_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE,
+        .event = DHCP_SERVER_EVENT_TIME_EXT_REQUEST,
+        .handler = on_time_ext_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE,
+        .event = DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST,
+        .handler = on_invalid_time_ext_request_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE,
+        .event = DHCP_SERVER_EVENT_RELEASE,
+        .handler = on_release_received
+    },
+    {
+        .state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE,
+        .event = DHCP_SERVER_EVENT_TTL_TIMEOUT,
+        .handler = on_ip_address_ttl_timeout
+    },
+    {
+        .state = DHCP_SERVER_STATE_NONE,
+        .event = DHCP_SERVER_EVENT_NONE,
+        .handler = NULL
+    },
+};
 
 /*
  * サーバのソケットの準備
@@ -56,6 +696,8 @@ bool setup_server_socket(int* server_sock)
         print_error(__func__, "socket() failed: %s\n", strerror(errno));
         return false;
     }
+
+    print_message(__func__, "server socket (fd: %d) created\n", *server_sock);
     
     /* ソケットに割り当てるアドレスの設定 */
     memset(&server_addr, 0, sizeof(server_addr));
@@ -69,6 +711,10 @@ bool setup_server_socket(int* server_sock)
         return false;
     }
 
+    print_message(__func__,
+                  "bind() called: server ip address: %s (INADDR_ANY), port: %" PRIu16 "\n",
+                  inet_ntoa(server_addr.sin_addr), DHCP_SERVER_PORT);
+
     return true;
 }
 
@@ -79,6 +725,8 @@ void close_server_socket(int server_sock)
 {
     if (close(server_sock) < 0)
         print_error(__func__, "close() failed: %s\n", strerror(errno));
+
+    print_message(__func__, "server socket (fd: %d) closed\n", server_sock);
 }
 
 /*
@@ -87,7 +735,8 @@ void close_server_socket(int server_sock)
 void handle_event(
     const struct dhcp_header* header,
     struct dhcp_client_list_entry* client,
-    enum dhcp_server_event event)
+    enum dhcp_server_event event,
+    int server_sock)
 {
     dhcp_server_event_handler handler;
 
@@ -95,7 +744,8 @@ void handle_event(
     assert(event != DHCP_SERVER_EVENT_NONE);
 
     /* 現在の状態とイベントに対応する遷移関数を取得 */
-    handler = lookup_server_state_transition_table(client->state, event);
+    handler = lookup_server_state_transition_table(server_state_transition_table,
+                                                   client->state, event);
 
     /* 状態とイベントに対応する遷移関数がない場合 */
     /* 該当するクライアントとの処理を終了 */
@@ -104,21 +754,25 @@ void handle_event(
                     "lookup_server_state_transition_table() failed: "
                     "corresponding event handler not found, therefore "
                     "connection to client %s will be shut down\n",
-                    inet_ntoa(client->addr));
-        /* TODO */
+                    inet_ntoa(client->id));
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(header, client, server_sock);
     } else {
         /* 対応する遷移関数を実行 */
-        (*handler)(header, client);
+        (*handler)(header, client, server_sock);
     }
 }
 
 /*
  * インターバルタイマーのタイムアウトの処理
  */
-void handle_alrm()
+void handle_alrm(int server_sock)
 {
     struct dhcp_client_list_entry* iter;
     struct dhcp_client_list_entry* iter_next;
+
+    char id_str[INET_ADDRSTRLEN];
+    char addr_str[INET_ADDRSTRLEN];
 
     list_for_each_entry_safe(iter, iter_next,
                              &dhcp_client_list_head.list_entry,
@@ -127,10 +781,26 @@ void handle_alrm()
         if (iter->ttl_counter > 0)
             iter->ttl_counter--;
 
+        /* 更新されたIPアドレスの使用期限を表示 */
+        if (iter->state == DHCP_SERVER_STATE_IP_ADDRESS_IN_USE) {
+            if (inet_ntop(AF_INET, &iter->id, id_str, sizeof(id_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *id_str = '\0';
+            }
+
+            if (inet_ntop(AF_INET, &iter->addr, addr_str, sizeof(addr_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *addr_str = '\0';
+            }
+
+            print_message(__func__, "ttl of ip address %s (client: %s): %" PRIu16 "\n",
+                          addr_str, id_str, iter->ttl_counter);
+        }
+
         /* IPアドレスの使用期限が切れた場合 */
         /* タイムアウトのイベントを処理 */
         if (iter->ttl_counter == 0)
-            handle_event(NULL, iter, DHCP_SERVER_EVENT_TTL_TIMEOUT);
+            handle_event(NULL, iter, DHCP_SERVER_EVENT_TTL_TIMEOUT, server_sock);
     }
 }
 
@@ -139,7 +809,8 @@ void handle_alrm()
  */
 void handle_dhcp_header(
     const struct sockaddr_in* client_addr,
-    ssize_t recv_bytes, const struct dhcp_header* header)
+    ssize_t recv_bytes, const struct dhcp_header* header,
+    int server_sock)
 {
     struct dhcp_client_list_entry* client;
 
@@ -155,7 +826,8 @@ void handle_dhcp_header(
     /* 新規のクライアントである場合 */
     if (client == NULL) {
         /* クライアントのリストに追加 */
-        if (!append_dhcp_client(&dhcp_client_list_head, client_addr->sin_addr,
+        if (!append_dhcp_client(&dhcp_client_list_head,
+                                client_addr->sin_addr, client_addr->sin_port,
                                 DHCP_SERVER_STATE_INIT, TIMEOUT_VALUE)) {
             print_error(__func__, "append_dhcp_client() failed\n");
             return;
@@ -174,11 +846,13 @@ void handle_dhcp_header(
                     "expected length was %zd bytes, but %zd were received\n",
                     sizeof(struct dhcp_header), recv_bytes);
         /* プロトコルに整合しないDHCPヘッダの処理 */
-        handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+        handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
         return;
     }
 
-    /* メッセージを出力 */
+    /* 受信したDHCPヘッダを出力 */
+    print_message(__func__, "dhcp header received from client %s: ",
+                  inet_ntoa(client_addr->sin_addr));
     dump_dhcp_header(stderr, header);
 
     /* メッセージの種別に応じてイベントを判別 */
@@ -194,12 +868,12 @@ void handle_dhcp_header(
                             "invalid dhcp header: "
                             "dhcp header fields except 'type' should be set to zero\n");
                 /* プロトコルに整合しないDHCPヘッダの処理 */
-                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
             }
             
             /* DISCOVERメッセージの処理 */
-            handle_event(header, client, DHCP_SERVER_EVENT_DISCOVER);
+            handle_event(header, client, DHCP_SERVER_EVENT_DISCOVER, server_sock);
             return;
 
         case DHCP_HEADER_TYPE_REQUEST:
@@ -218,7 +892,7 @@ void handle_dhcp_header(
                             dhcp_header_code_to_string(DHCP_HEADER_TYPE_REQUEST,
                                                        DHCP_HEADER_CODE_REQUEST_TIME_EXT));
                 /* プロトコルに整合しないDHCPヘッダの処理 */
-                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
             }
 
@@ -234,9 +908,9 @@ void handle_dhcp_header(
                 
                 /* 不正なREQUESTメッセージの処理 */
                 if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
-                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST);     
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST, server_sock);
                 else
-                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST);
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST, server_sock);
                 return;
             }
 
@@ -249,17 +923,17 @@ void handle_dhcp_header(
                 
                 /* 不正なREQUESTメッセージの処理 */
                 if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
-                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST);
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST, server_sock);
                 else
-                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST);
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST, server_sock);
                 return;
             }
             
             /* REQUESTメッセージの処理 */
             if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
-                handle_event(header, client, DHCP_SERVER_EVENT_ALLOC_REQUEST);
+                handle_event(header, client, DHCP_SERVER_EVENT_ALLOC_REQUEST, server_sock);
             else
-                handle_event(header, client, DHCP_SERVER_EVENT_TIME_EXT_REQUEST);
+                handle_event(header, client, DHCP_SERVER_EVENT_TIME_EXT_REQUEST, server_sock);
             return;
 
         case DHCP_HEADER_TYPE_RELEASE:
@@ -272,17 +946,20 @@ void handle_dhcp_header(
                             "invalid dhcp header: "
                             "dhcp header fields except 'ttl' and 'mask' should be set to zero\n");
                 /* プロトコルに整合しないDHCPヘッダの処理 */
-                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
             }
             
             /* RELEASEメッセージの処理 */
-            handle_event(header, client, DHCP_SERVER_EVENT_RELEASE);
+            handle_event(header, client, DHCP_SERVER_EVENT_RELEASE, server_sock);
             return;
     }
     
     /* それ以外のタイプである場合はエラー */
-    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+    print_error(__func__, "invalid dhcp header: unknown message type: %s\n",
+                dhcp_header_type_to_string(header->type));
+    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
+
     return;
 }
 
@@ -323,8 +1000,11 @@ bool run_dhcp_server()
         close_server_socket(server_sock);
         return false;
     }
+    
+    /* サーバのメインループの実行 */
+    app_exit = 0;
 
-    while (true) {
+    while (!app_exit) {
         /* シグナルSIGALRMのブロックを解除 */
         if (!unblock_sigalrm()) {
             print_error(__func__, "unblock_sigalrm() failed\n");
@@ -347,7 +1027,7 @@ bool run_dhcp_server()
         if (recv_bytes < 0) {
             if (recv_errno == EINTR && is_sigalrm_handled == 1) {
                 /* シグナルSIGALRMの処理 */
-                handle_alrm();
+                handle_alrm(server_sock);
                 is_sigalrm_handled = 0;
             } else {
                 /* その他のエラーの場合 */
@@ -357,7 +1037,7 @@ bool run_dhcp_server()
             }
         } else {
             /* 受信したDHCPヘッダの処理 */
-            handle_dhcp_header(&client_addr, recv_bytes, &recv_header);
+            handle_dhcp_header(&client_addr, recv_bytes, &recv_header, server_sock);
         }
     }
 

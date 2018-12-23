@@ -11,6 +11,11 @@
 #include <arpa/inet.h>
 
 /*
+ * サーバが使用するポート番号
+ */
+#define DHCP_SERVER_PORT                51230
+
+/*
  * タイムアウトと判定される待ち時間
  */
 #define TIMEOUT_VALUE                   10

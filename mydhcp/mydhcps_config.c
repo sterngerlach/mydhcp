@@ -33,7 +33,6 @@ void free_dhcp_server_config(struct dhcp_server_config* config)
     assert(config != NULL);
 
     config->ttl = UINT16_C(0);
-    free_ip_addr_list(&config->available_ip_addr_list_head);
 }
 
 /*
@@ -157,7 +156,7 @@ bool load_config(const char* file_name, struct dhcp_server_config* config)
         
         /* 割当可能なIPアドレスとサブネットマスクの組をリンクリストに追加 */
         if (!append_available_ip_addr(&config->available_ip_addr_list_head,
-                                      mask, addr)) {
+                                      addr, mask)) {
             print_error(__func__, "append_ip_addr() failed\n");
             free(line);
             return false;

@@ -3,25 +3,39 @@
 /* mydhcp.c */
 
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "mydhcp.h"
+#include "util.h"
 
 /*
  * DHCPヘッダを出力
  */
 void dump_dhcp_header(FILE* fp, const struct dhcp_header* header)
 {
+    char addr_str[INET_ADDRSTRLEN];
+    char mask_str[INET_ADDRSTRLEN];
+
     assert(header != NULL);
+
+    if (inet_ntop(AF_INET, &header->addr, addr_str, sizeof(addr_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        return;
+    }
+
+    if (inet_ntop(AF_INET, &header->mask, mask_str, sizeof(mask_str)) == NULL) {
+        print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+        return;
+    }
 
     fprintf(fp,
             "dhcp header type: %s, code: %s, ttl: %" PRIu16 ", "
             "addr: %s, mask: %s\n",
             dhcp_header_type_to_string(header->type),
             dhcp_header_code_to_string(header->type, header->code),
-            header->ttl,
-            inet_ntoa(*(struct in_addr*)&header->addr),
-            inet_ntoa(*(struct in_addr*)&header->mask));
+            header->ttl, addr_str, mask_str);
 }
 
 /*

@@ -43,7 +43,9 @@ struct dhcp_client_list_entry;
  * サーバが状態とイベントに応じて実行する遷移関数の型
  */
 typedef void (*dhcp_server_event_handler)(
-    const struct dhcp_header* header, struct dhcp_client_list_entry* client);
+    const struct dhcp_header* header,
+    struct dhcp_client_list_entry* client,
+    int server_sock);
 
 /*
  * サーバの状態遷移を表す構造体
@@ -73,6 +75,7 @@ const char* dhcp_server_event_to_string(enum dhcp_server_event event);
  * サーバの現在の状態とイベントに対する遷移関数の取得
  */
 dhcp_server_event_handler lookup_server_state_transition_table(
+    const struct dhcp_server_state_transition* server_state_transition_table,
     enum dhcp_server_state state, enum dhcp_server_event event);
 
 #endif /* MYDHCPS_STATE_MACHINE_H */

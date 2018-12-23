@@ -50,8 +50,8 @@ void dump_ip_addr_list(FILE* fp, const struct ip_addr_list_entry* list_head)
 
     list_for_each_entry(iter, &list_head->list_entry,
                         struct ip_addr_list_entry, list_entry) {
-        fprintf(fp, "%s\t%s\n",
-                inet_ntoa(iter->addr), inet_ntoa(iter->mask));
+        fprintf(fp, "%s", inet_ntoa(iter->addr));
+        fprintf(fp, "\t%s\n", inet_ntoa(iter->mask));
     }
 }
 
@@ -97,7 +97,7 @@ bool get_available_ip_addr(
 
     assert(list_head != NULL);
     assert(addr != NULL);
-    assert(addr != NULL);
+    assert(mask != NULL);
 
     /* 割当可能なIPアドレスがない場合 */
     if (is_list_empty(&list_head->list_entry))
