@@ -14,14 +14,24 @@
 extern volatile sig_atomic_t is_sigalrm_handled;
 
 /*
+ * シグナルSIGINTが発生したかどうか(サーバを終了するかどうか)のフラグ
+ */
+extern volatile sig_atomic_t app_exit;
+
+/*
  * シグナルSIGALRMのハンドラ
  */
 void sigalrm_handler(int sig);
 
 /*
- * シグナルSIGALRMのハンドラを設定
+ * シグナルSIGINTのハンドラ
  */
-bool setup_sigalrm_handler();
+void sigint_handler(int sig);
+
+/*
+ * シグナルハンドラを設定
+ */
+bool setup_signal_handlers();
 
 /*
  * シグナルSIGALRMをブロック

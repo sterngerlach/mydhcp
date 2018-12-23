@@ -27,11 +27,6 @@
 #include "util.h"
 
 /*
- * サーバを終了するかどうかを保持するフラグ
- */
-static volatile sig_atomic_t app_exit;
-
-/*
  * 疑似DHCPサーバの設定
  */
 static struct dhcp_server_config dhcp_server_config;
@@ -983,7 +978,7 @@ bool run_dhcp_server()
     }
 
     /* シグナルSIGALRMのハンドラを設定 */
-    if (!setup_sigalrm_handler()) {
+    if (!setup_signal_handlers()) {
         print_error(__func__, "setup_sigalrm_handler() failed\n");
         return false;
     }
@@ -1002,6 +997,7 @@ bool run_dhcp_server()
     }
     
     /* サーバのメインループの実行 */
+    is_sigalrm_handled = 0;
     app_exit = 0;
 
     while (!app_exit) {
@@ -1061,6 +1057,8 @@ int main(int argc, char** argv)
         free_dhcp_server_config(&dhcp_server_config);
         return EXIT_FAILURE;
     }
+
+    print_message(__func__, "load_config() succeeded\n");
     
     /* 割り当て可能なIPアドレスのリストを表示 */
     available_ip_addr_list_head = &dhcp_server_config.available_ip_addr_list_head;
@@ -1068,15 +1066,18 @@ int main(int argc, char** argv)
 
     /* 接続されたクライアントのリストを初期化 */
     initialize_client_list(&dhcp_client_list_head);
+    print_message(__func__, "initialize_client_list() called\n");
 
     /* サーバの実行 */
     exit_status = run_dhcp_server();
 
     /* 接続されたクライアントのリストを破棄 */
     free_client_list(&dhcp_client_list_head);
+    print_message(__func__, "free_client_list() called\n");
     
     /* サーバの設定の破棄 */
     free_dhcp_server_config(&dhcp_server_config);
+    print_message(__func__, "free_dhcp_server_config() called\n");
 
     return exit_status ? EXIT_SUCCESS : EXIT_FAILURE;
 }

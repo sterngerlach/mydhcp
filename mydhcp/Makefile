@@ -13,7 +13,7 @@ OUTDIR = .
 
 TARGET_SERVER = $(OUTDIR)/mydhcps
 OBJECTS_SERVER = $(addprefix $(OBJDIR)/, \
-	mydhcps.o mydhcps_alarm.o mydhcps_config.o \
+	mydhcps.o mydhcps_signal.o mydhcps_config.o \
 	mydhcps_ip_addr_list.o mydhcps_client_list.o mydhcps_state_machine.o \
 	mydhcp.o util.o)
 

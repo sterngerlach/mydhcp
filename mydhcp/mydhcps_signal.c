@@ -6,13 +6,18 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include "mydhcps_alarm.h"
+#include "mydhcps_signal.h"
 #include "util.h"
 
 /*
  * シグナルSIGALRMが発生したかどうかのフラグ
  */
 volatile sig_atomic_t is_sigalrm_handled;
+
+/*
+ * シグナルSIGINTが発生したかどうか(サーバを終了するかどうか)のフラグ
+ */
+volatile sig_atomic_t app_exit;
 
 /*
  * シグナルSIGALRMをブロックするためのシグナルマスク
@@ -35,11 +40,23 @@ void sigalrm_handler(int sig)
 }
 
 /*
- * シグナルSIGALRMのハンドラを設定
+ * シグナルSIGINTのハンドラ
  */
-bool setup_sigalrm_handler()
+void sigint_handler(int sig)
+{
+    (void)sig;
+
+    app_exit = 1;
+}
+
+/*
+ * シグナルハンドラを設定
+ */
+bool setup_signal_handlers()
 {
     struct sigaction sigact;
+
+    memset(&sigact, 0, sizeof(struct sigaction));
 
     /* シグナルSIGALRMのハンドラを設定 */
     sigact.sa_handler = sigalrm_handler;
@@ -47,7 +64,21 @@ bool setup_sigalrm_handler()
     sigemptyset(&sigact.sa_mask);
     
     if (sigaction(SIGALRM, &sigact, NULL) < 0) {
-        print_error(__func__, "sigaction() failed: %s\n", strerror(errno));
+        print_error(__func__,
+                    "sigaction() failed: %s, failed to set SIGALRM signal handler\n",
+                    strerror(errno));
+        return false;
+    }
+
+    /* シグナルSIGINTのハンドラを設定 */
+    sigact.sa_handler = sigint_handler;
+    sigact.sa_flags = SA_RESTART;
+    sigemptyset(&sigact.sa_mask);
+
+    if (sigaction(SIGINT, &sigact, NULL) < 0) {
+        print_error(__func__,
+                    "sigaction() failed: %s, failed to set SIGINT signal handler\n",
+                    strerror(errno));
         return false;
     }
 
