@@ -68,13 +68,13 @@ void on_disconnect_client(
                         inet_ntoa(client->addr));
         else
             print_message(__func__,
-                          "recall_ip_addr() called: ip address %s is available again\n",
+                          "recall_ip_addr() succeeded: ip address %s is available again\n",
                           inet_ntoa(client->addr));
     }
 
     /* クライアントの情報をリンクリストから削除 */
     print_message(__func__,
-                  "remove_dhcp_client() called: client %s (port: %" PRIu16 "disconnected\n",
+                  "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 "disconnected\n",
                   inet_ntoa(client->id), client->port);
 
     remove_dhcp_client(client);
@@ -712,7 +712,7 @@ bool setup_server_socket(int* server_sock)
     }
 
     print_message(__func__,
-                  "bind() called: server ip address: %s (INADDR_ANY), port: %" PRIu16 "\n",
+                  "bind() succeeded: server ip address: %s (INADDR_ANY), port: %" PRIu16 "\n",
                   inet_ntoa(server_addr.sin_addr), DHCP_SERVER_PORT);
 
     return true;
