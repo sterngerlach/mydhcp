@@ -19,7 +19,6 @@
 #include <arpa/inet.h>
 
 #include "mydhcp.h"
-#include "mydhcps.h"
 #include "mydhcps_signal.h"
 #include "mydhcps_config.h"
 #include "mydhcps_client_list.h"
