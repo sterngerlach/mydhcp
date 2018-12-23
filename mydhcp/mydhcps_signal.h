@@ -1,9 +1,9 @@
 
 /* 情報工学科3年 学籍番号61610117 杉浦 圭祐 */
-/* mydhcps_alarm.h */
+/* mydhcps_signal.h */
 
-#ifndef MYDHCPS_ALARM_H
-#define MYDHCPS_ALARM_H
+#ifndef MYDHCPS_SIGNAL_H
+#define MYDHCPS_SIGNAL_H
 
 #include <signal.h>
 #include <stdbool.h>
@@ -38,5 +38,5 @@ bool unblock_sigalrm();
  */
 bool setup_interval_timer();
 
-#endif /* MYDHCPS_ALARM_H */
+#endif /* MYDHCPS_SIGNAL_H */
 

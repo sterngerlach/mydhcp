@@ -1,6 +1,6 @@
 
 /* 情報工学科3年 学籍番号61610117 杉浦 圭祐 */
-/* mydhcps_alarm.c */
+/* mydhcps_signal.c */
 
 #include <errno.h>
 #include <string.h>
