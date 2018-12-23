@@ -17,6 +17,7 @@
 
 /*
  * 接続されたクライアントの情報を保持する構造体
+ * id, addr, mask, ttlはネットワークバイトオーダーで保持
  */
 struct dhcp_client_list_entry {
     struct list_entry       list_entry;     /* リンクリストのポインタ */
@@ -42,6 +43,21 @@ void free_client_list(struct dhcp_client_list_entry* list_head);
  * 接続されたクライアントのリストを表示
  */
 void dump_client_list(FILE* fp, const struct dhcp_client_list_entry* list_head);
+
+/*
+ * 新たなクライアントをリストに追加
+ */
+bool append_dhcp_client(
+    struct dhcp_client_list_entry* list_head,
+    struct in_addr id,
+    enum dhcp_server_state state,
+    uint16_t ttl_counter);
+
+/*
+ * 指定されたクライアントをリストから削除
+ */
+void remove_dhcp_client(
+    struct dhcp_client_list_entry* client);
 
 /*
  * 指定されたIPアドレスを持つクライアントの取得

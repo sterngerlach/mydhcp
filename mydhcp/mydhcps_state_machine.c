@@ -20,7 +20,7 @@ struct dhcp_server_state_transition server_state_transition_table[] = {
 /*
  * サーバの状態を表す列挙体を文字列に変換
  */
-const char* convert_server_state_to_string(enum dhcp_server_state state)
+const char* dhcp_server_state_to_string(enum dhcp_server_state state)
 {
     static const char* server_state_str[] = {
         [DHCP_SERVER_STATE_NONE]
@@ -43,25 +43,23 @@ const char* convert_server_state_to_string(enum dhcp_server_state state)
 /*
  * サーバで発生するイベントを表す列挙体を文字列に変換
  */
-const char* convert_server_event_to_string(enum dhcp_server_event event)
+const char* dhcp_server_event_to_string(enum dhcp_server_event event)
 {
     static const char* server_event_str[] = {
         [DHCP_SERVER_EVENT_NONE]
             = "DHCP_SERVER_EVENT_NONE",
-        [DHCP_SERVER_EVENT_TIMEOUT]
-            = "DHCP_SERVER_EVENT_TIMEOUT",
-        [DHCP_SERVER_EVENT_DISCOVER_RECEIVED]
-            = "DHCP_SERVER_EVENT_DISCOVER_RECEIVED",
-        [DHCP_SERVER_EVENT_ALLOC_REQUEST_RECEIVED]
-            = "DHCP_SERVER_EVENT_ALLOC_REQUEST_RECEIVED",
-        [DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST_RECEIVED]
-            = "DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST_RECEIVED",
-        [DHCP_SERVER_EVENT_TIME_EXTENSION_REQUEST_RECEIVED]
-            = "DHCP_SERVER_EVENT_TIME_EXTENSION_REQUEST_RECEIVED",
-        [DHCP_SERVER_EVENT_INVALID_TIME_EXTENSION_REQUEST_RECEIVED]
-            = "DHCP_SERVER_EVENT_INVALID_TIME_EXTENSION_REQUEST_RECEIVED",
-        [DHCP_SERVER_EVENT_RELEASE_RECEIVED]
-            = "DHCP_SERVER_EVENT_RELEASE_RECEIVED",
+        [DHCP_SERVER_EVENT_DISCOVER]
+            = "DHCP_SERVER_EVENT_DISCOVER",
+        [DHCP_SERVER_EVENT_ALLOC_REQUEST]
+            = "DHCP_SERVER_EVENT_ALLOC_REQUEST",
+        [DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST]
+            = "DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST",
+        [DHCP_SERVER_EVENT_TIME_EXT_REQUEST]
+            = "DHCP_SERVER_EVENT_TIME_EXT_REQUEST",
+        [DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST]
+            = "DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST",
+        [DHCP_SERVER_EVENT_RELEASE]
+            = "DHCP_SERVER_EVENT_RELEASE",
         [DHCP_SERVER_EVENT_TTL_TIMEOUT]
             = "DHCP_SERVER_EVENT_TTL_TIMEOUT",
     };

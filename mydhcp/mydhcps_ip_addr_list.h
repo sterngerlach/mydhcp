@@ -16,6 +16,7 @@
 
 /*
  * 割当可能なIPアドレスのリストを保持する構造体
+ * addr, maskはネットワークバイトオーダーで保持
  */
 struct ip_addr_list_entry {
     struct list_entry   list_entry;

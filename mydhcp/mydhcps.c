@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -81,40 +82,208 @@ void close_server_socket(int server_sock)
 }
 
 /*
+ * サーバで発生したイベントの処理
+ */
+void handle_event(
+    const struct dhcp_header* header,
+    struct dhcp_client_list_entry* client,
+    enum dhcp_server_event event)
+{
+    dhcp_server_event_handler handler;
+
+    assert(client != NULL);
+    assert(event != DHCP_SERVER_EVENT_NONE);
+
+    /* 現在の状態とイベントに対応する遷移関数を取得 */
+    handler = lookup_server_state_transition_table(client->state, event);
+
+    /* 状態とイベントに対応する遷移関数がない場合 */
+    /* 該当するクライアントとの処理を終了 */
+    if (handler == NULL) {
+        print_error(__func__,
+                    "lookup_server_state_transition_table() failed: "
+                    "corresponding event handler not found, therefore "
+                    "connection to client %s will be shut down\n",
+                    inet_ntoa(client->addr));
+        /* TODO */
+    } else {
+        /* 対応する遷移関数を実行 */
+        (*handler)(header, client);
+    }
+}
+
+/*
  * インターバルタイマーのタイムアウトの処理
  */
 void handle_alrm()
 {
     struct dhcp_client_list_entry* iter;
     struct dhcp_client_list_entry* iter_next;
-    dhcp_server_event_handler handler;
 
     list_for_each_entry_safe(iter, iter_next,
                              &dhcp_client_list_head.list_entry,
                              struct dhcp_client_list_entry, list_entry) {
         /* IPアドレスの使用期限を更新 */
-        iter->ttl_counter--;
+        if (iter->ttl_counter > 0)
+            iter->ttl_counter--;
 
         /* IPアドレスの使用期限が切れた場合 */
-        if (iter->ttl_counter == 0) {
-        }
+        /* タイムアウトのイベントを処理 */
+        if (iter->ttl_counter == 0)
+            handle_event(NULL, iter, DHCP_SERVER_EVENT_TTL_TIMEOUT);
     }
 }
 
 /*
  * サーバが受信したDHCPヘッダの処理
  */
-void handle_dhcp_header(ssize_t recv_bytes, struct dhcp_header* header)
+void handle_dhcp_header(
+    const struct sockaddr_in* client_addr,
+    ssize_t recv_bytes, const struct dhcp_header* header)
 {
-    /* TODO */
-}
+    struct dhcp_client_list_entry* client;
 
-/*
- * サーバで発生したイベントの処理
- */
-void handle_event(struct dhcp_client_list_entry* client, enum dhcp_server_event event)
-{
-    /* TODO */
+    print_error(__func__, "message received from %s (port: %d)\n",
+                inet_ntoa(client_addr->sin_addr),
+                ntohs(client_addr->sin_port));
+    
+    /* クライアントの情報を取得 */
+    /* 新規のクライアントである場合はNULL */
+    client = lookup_dhcp_client(&dhcp_client_list_head,
+                                client_addr->sin_addr);
+
+    /* 新規のクライアントである場合 */
+    if (client == NULL) {
+        /* クライアントのリストに追加 */
+        if (!append_dhcp_client(&dhcp_client_list_head, client_addr->sin_addr,
+                                DHCP_SERVER_STATE_INIT, TIMEOUT_VALUE)) {
+            print_error(__func__, "append_dhcp_client() failed\n");
+            return;
+        }
+
+        /* クライアントの情報を取得 */
+        client = lookup_dhcp_client(&dhcp_client_list_head,
+                                    client_addr->sin_addr);
+        assert(client != NULL);
+    }
+
+    /* 受信したデータサイズとDHCPヘッダのサイズが異なる場合 */
+    if (recv_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "invalid dhcp header: "
+                    "expected length was %zd bytes, but %zd were received\n",
+                    sizeof(struct dhcp_header), recv_bytes);
+        /* プロトコルに整合しないDHCPヘッダの処理 */
+        handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+        return;
+    }
+
+    /* メッセージを出力 */
+    dump_dhcp_header(stderr, header);
+
+    /* メッセージの種別に応じてイベントを判別 */
+    switch (header->type) {
+        case DHCP_HEADER_TYPE_DISCOVER:
+            /* DISCOVERメッセージである場合 */
+            /* Type以外のフィールドが0でなければエラー */
+            if (header->code != 0 ||
+                ntohs(header->ttl) != 0 ||
+                ntohl(header->addr) != 0 ||
+                ntohl(header->mask) != 0) {
+                print_error(__func__,
+                            "invalid dhcp header: "
+                            "dhcp header fields except 'type' should be set to zero\n");
+                /* プロトコルに整合しないDHCPヘッダの処理 */
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                return;
+            }
+            
+            /* DISCOVERメッセージの処理 */
+            handle_event(header, client, DHCP_SERVER_EVENT_DISCOVER);
+            return;
+
+        case DHCP_HEADER_TYPE_REQUEST:
+            /* REQUESTメッセージである場合 */
+            /* Codeフィールドのチェック */
+            if (header->code != DHCP_HEADER_CODE_REQUEST_ALLOC ||
+                header->code != DHCP_HEADER_CODE_REQUEST_TIME_EXT) {
+                print_error(__func__,
+                            "invalid 'type' field value %" PRIu8 ", "
+                            "%" PRIu8 " (%s) or %" PRIu8 " (%s) expected",
+                            header->code,
+                            DHCP_HEADER_CODE_REQUEST_ALLOC,
+                            dhcp_header_code_to_string(DHCP_HEADER_TYPE_REQUEST,
+                                                       DHCP_HEADER_CODE_REQUEST_ALLOC),
+                            DHCP_HEADER_CODE_REQUEST_TIME_EXT,
+                            dhcp_header_code_to_string(DHCP_HEADER_TYPE_REQUEST,
+                                                       DHCP_HEADER_CODE_REQUEST_TIME_EXT));
+                /* プロトコルに整合しないDHCPヘッダの処理 */
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                return;
+            }
+
+            /* 要求されたIPアドレスが割り当てたものと異なる場合はエラー */
+            if (client->addr.s_addr != header->addr ||
+                client->mask.s_addr != header->mask) {
+                print_error(__func__,
+                            "invalid 'addr' field value %s (mask: %s), "
+                            "%s (mask: %s) expected",
+                            inet_ntoa(client->addr), inet_ntoa(client->mask),
+                            inet_ntoa(*(struct in_addr*)&header->addr),
+                            inet_ntoa(*(struct in_addr*)&header->mask));
+                
+                /* 不正なREQUESTメッセージの処理 */
+                if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST);     
+                else
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST);
+                return;
+            }
+
+            /* TTLフィールドが大き過ぎる場合はエラー */
+            if (ntohs(header->ttl) > ntohs(client->ttl)) {
+                print_error(__func__,
+                            "invalid 'ttl' field value %" PRIu16 ", "
+                            "less than or equal to %" PRIu16 " expected",
+                            ntohs(header->ttl), ntohs(client->ttl));
+                
+                /* 不正なREQUESTメッセージの処理 */
+                if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST);
+                else
+                    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST);
+                return;
+            }
+            
+            /* REQUESTメッセージの処理 */
+            if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
+                handle_event(header, client, DHCP_SERVER_EVENT_ALLOC_REQUEST);
+            else
+                handle_event(header, client, DHCP_SERVER_EVENT_TIME_EXT_REQUEST);
+            return;
+
+        case DHCP_HEADER_TYPE_RELEASE:
+            /* RELEASEメッセージである場合 */
+            /* Type, Addr以外のフィールドが0でなければエラー */
+            if (header->code != 0 ||
+                ntohs(header->ttl) != 0 ||
+                ntohl(header->mask) != 0) {
+                print_error(__func__,
+                            "invalid dhcp header: "
+                            "dhcp header fields except 'ttl' and 'mask' should be set to zero\n");
+                /* プロトコルに整合しないDHCPヘッダの処理 */
+                handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+                return;
+            }
+            
+            /* RELEASEメッセージの処理 */
+            handle_event(header, client, DHCP_SERVER_EVENT_RELEASE);
+            return;
+    }
+    
+    /* それ以外のタイプである場合はエラー */
+    handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER);
+    return;
 }
 
 /*
@@ -186,14 +355,9 @@ bool run_dhcp_server()
                 close_server_socket(server_sock);
                 return false;
             }
-        } else if (recv_bytes != sizeof(recv_header)) {
-            /* 受信したDHCPヘッダのサイズが小さい場合 */
-            print_error(__func__, "incomplete dhcp header received\n");
-            close_server_socket(server_sock);
-            return false;
         } else {
             /* 受信したDHCPヘッダの処理 */
-            handle_dhcp_header(recv_bytes, &recv_header);
+            handle_dhcp_header(&client_addr, recv_bytes, &recv_header);
         }
     }
 
