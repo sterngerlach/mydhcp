@@ -149,6 +149,9 @@ void on_discover_received(
         print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
         dump_dhcp_header(stderr, &header);
 
+        /* クライアントとの接続を終了 */
+        on_disconnect_client(received_header, client, server_sock);
+
         return;
     }
     
