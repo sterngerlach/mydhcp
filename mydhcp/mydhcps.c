@@ -73,12 +73,12 @@ void on_disconnect_client(
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_TERMINATE));
 
-    /* クライアントの情報をリンクリストから削除 */
     client_addr = client->id;
     client_port = client->port;
 
     remove_dhcp_client(client);
 
+    /* クライアントの情報をリンクリストから削除 */
     print_message(__func__,
                   "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 ") disconnected\n",
                   inet_ntoa(client_addr), client_port);
@@ -498,7 +498,8 @@ void on_time_ext_request_received(
     
     /* クライアントの情報を更新 */
     client->state = DHCP_SERVER_STATE_IP_ADDRESS_IN_USE;
-    client->ttl_counter = ntohs(client->ttl);
+    client->ttl_counter = ntohs(received_header->ttl);
+    client->ttl = received_header->ttl;
     
     return;
 }
@@ -585,6 +586,8 @@ void on_release_received(
 
     /* クライアントとの接続を終了 */
     on_disconnect_client(received_header, client, server_sock);
+
+    return;
 }
 
 /*
@@ -620,6 +623,8 @@ void on_ip_address_ttl_timeout(
 
     /* クライアントとの接続を終了 */
     on_disconnect_client(received_header, client, server_sock);
+
+    return;
 }
 
 /*
@@ -826,6 +831,11 @@ void handle_dhcp_header(
 {
     struct dhcp_client_list_entry* client;
 
+    char client_addr_str[INET_ADDRSTRLEN];
+    char client_mask_str[INET_ADDRSTRLEN];
+    char header_addr_str[INET_ADDRSTRLEN];
+    char header_mask_str[INET_ADDRSTRLEN];
+
     print_message(__func__, "message received from %s (port: %d)\n",
                   inet_ntoa(client_addr->sin_addr),
                   ntohs(client_addr->sin_port));
@@ -907,22 +917,44 @@ void handle_dhcp_header(
                 handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
             }
+            
+            /* クライアントに割り当てられたIPアドレス, サブネットマスク,
+             * DHCPヘッダに含まれるIPアドレス, サブネットマスクを文字列に変換 */
+            if (inet_ntop(AF_INET, &client->addr, client_addr_str, sizeof(client_addr_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *client_addr_str = '\0';
+            }
+
+            if (inet_ntop(AF_INET, &client->mask, client_mask_str, sizeof(client_mask_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *client_mask_str = '\0';
+            }
+
+            if (inet_ntop(AF_INET, &header->addr, header_addr_str, sizeof(header_addr_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *header_addr_str = '\0';
+            }
+
+            if (inet_ntop(AF_INET, &header->mask, header_mask_str, sizeof(header_mask_str)) == NULL) {
+                print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+                *header_mask_str = '\0';
+            }
 
             /* 要求されたIPアドレスが割り当てたものと異なる場合はエラー */
             if (client->addr.s_addr != header->addr ||
                 client->mask.s_addr != header->mask) {
                 print_error(__func__,
                             "invalid 'addr' field value %s (mask: %s), "
-                            "%s (mask: %s) expected",
-                            inet_ntoa(client->addr), inet_ntoa(client->mask),
-                            inet_ntoa(*(struct in_addr*)&header->addr),
-                            inet_ntoa(*(struct in_addr*)&header->mask));
+                            "%s (mask: %s) expected\n",
+                            header_addr_str, header_mask_str
+                            client_addr_str, client_mask_str);
                 
                 /* 不正なREQUESTメッセージの処理 */
                 if (header->code == DHCP_HEADER_CODE_REQUEST_ALLOC)
                     handle_event(header, client, DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST, server_sock);
                 else
                     handle_event(header, client, DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST, server_sock);
+
                 return;
             }
 
