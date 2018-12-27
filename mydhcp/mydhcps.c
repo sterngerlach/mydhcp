@@ -946,7 +946,7 @@ void handle_dhcp_header(
                 print_error(__func__,
                             "invalid 'addr' field value %s (mask: %s), "
                             "%s (mask: %s) expected\n",
-                            header_addr_str, header_mask_str
+                            header_addr_str, header_mask_str,
                             client_addr_str, client_mask_str);
                 
                 /* 不正なREQUESTメッセージの処理 */
