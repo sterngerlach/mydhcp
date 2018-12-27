@@ -27,6 +27,8 @@ bool on_disconnect_server(
     assert(context != NULL);
     assert(context->client_sock >= 0);
 
+    (void)received_header;
+
     /* ソケットのクローズ */
     if (close(context->client_sock) < 0) {
         print_error(__func__,
@@ -828,8 +830,49 @@ bool handle_alrm(
 bool handle_hup(
     struct dhcp_client_context* context)
 {
+    ssize_t send_bytes;
+    struct dhcp_header header;
+    struct sockaddr_in server_addr;
+
+    assert(context != NULL);
+
+    /* サーバのアドレス構造体を作成 */
+    memset(&server_addr, 0, sizeof(struct sockaddr_in));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(DHCP_SERVER_PORT);
+    server_addr.sin_addr.s_addr = context->server_addr.s_addr;
+
     /* RELEASEメッセージの作成 */
-    /* TODO */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_RELEASE;
+    header.addr = context->addr.s_addr;
+    
+    /* REQUESTメッセージを送信 */
+    send_bytes = sendto(context->client_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&server_addr, sizeof(server_addr));
+    
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to server %s\n",
+                    strerror(errno), inet_ntoa(context->server_addr));
+        return false;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send full dhcp header to server %s\n",
+                    inet_ntoa(context->server_addr));
+        return false;
+    }
+
+    print_message(__func__, "dhcp header has been sent to server %s\n",
+                  inet_ntoa(context->server_addr));
+    dump_dhcp_header(stderr, &header);
+    
+    /* サーバとの通信を終了 */
+    on_disconnect_server(NULL, context);
 
     return true;
 }
