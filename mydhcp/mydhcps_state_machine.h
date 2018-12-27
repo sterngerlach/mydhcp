@@ -57,11 +57,6 @@ struct dhcp_server_state_transition {
 };
 
 /*
- * サーバの状態遷移を表す配列
- */
-extern struct dhcp_server_state_transition server_state_transition_table[];
-
-/*
  * サーバの状態を表す列挙体を文字列に変換
  */
 const char* dhcp_server_state_to_string(enum dhcp_server_state state);

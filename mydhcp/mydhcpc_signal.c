@@ -1,12 +1,13 @@
 
 /* 情報工学科3年 学籍番号61610117 杉浦 圭祐 */
-/* mydhcps_signal.c */
+/* mydhcpc_signal.c */
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
-#include "mydhcps_signal.h"
+#include "mydhcpc_signal.h"
 #include "util.h"
 
 /*
@@ -15,7 +16,7 @@
 volatile sig_atomic_t is_sigalrm_handled;
 
 /*
- * シグナルSIGINTが発生したかどうか(サーバを終了するかどうか)のフラグ
+ * シグナルSIGHUPが発生したかどうかのフラグ
  */
 volatile sig_atomic_t app_exit;
 
@@ -40,9 +41,9 @@ void sigalrm_handler(int sig)
 }
 
 /*
- * シグナルSIGINTのハンドラ
+ * シグナルSIGHUPのハンドラ
  */
-void sigint_handler(int sig)
+void sighup_handler(int sig)
 {
     (void)sig;
 
@@ -62,7 +63,7 @@ bool setup_signal_handlers()
     sigact.sa_handler = sigalrm_handler;
     sigact.sa_flags = 0;
     sigemptyset(&sigact.sa_mask);
-    
+
     if (sigaction(SIGALRM, &sigact, NULL) < 0) {
         print_error(__func__,
                     "sigaction() failed: %s, failed to set SIGALRM signal handler\n",
@@ -70,16 +71,15 @@ bool setup_signal_handlers()
         return false;
     }
 
-    /* シグナルSIGINTのハンドラを設定 */
-    /* SA_RESTARTを設定しなければ, recvfrom()関数がEINTRを返す */
-    sigact.sa_handler = sigint_handler;
+    /* シグナルSIGHUPのハンドラを設定 */
+    sigact.sa_handler = sighup_handler;
     /* sigact.sa_flags = SA_RESTART; */
     sigact.sa_flags = 0;
     sigemptyset(&sigact.sa_mask);
 
-    if (sigaction(SIGINT, &sigact, NULL) < 0) {
+    if (sigaction(SIGHUP, &sigact, NULL) < 0) {
         print_error(__func__,
-                    "sigaction() failed: %s, failed to set SIGINT signal handler\n",
+                    "sigaction() failed: %s, failed to set SIGHUP signal handler\n",
                     strerror(errno));
         return false;
     }

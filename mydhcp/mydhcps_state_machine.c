@@ -26,7 +26,8 @@ const char* dhcp_server_state_to_string(enum dhcp_server_state state)
             = "DHCP_SERVER_STATE_TERMINATE",
     };
 
-    return server_state_str[state];
+    return server_state_str[state] ?
+           server_state_str[state] : "Unknown";
 }
 
 /*
@@ -53,7 +54,8 @@ const char* dhcp_server_event_to_string(enum dhcp_server_event event)
             = "DHCP_SERVER_EVENT_TTL_TIMEOUT",
     };
 
-    return server_event_str[event];
+    return server_event_str[event] ?
+           server_event_str[event] : "Unknown";
 }
 
 /*

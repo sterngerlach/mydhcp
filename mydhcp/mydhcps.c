@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -19,9 +18,9 @@
 #include <arpa/inet.h>
 
 #include "mydhcp.h"
-#include "mydhcps_signal.h"
-#include "mydhcps_config.h"
 #include "mydhcps_client_list.h"
+#include "mydhcps_config.h"
+#include "mydhcps_signal.h"
 #include "mydhcps_state_machine.h"
 #include "util.h"
 
@@ -48,6 +47,9 @@ void on_disconnect_client(
     struct dhcp_client_list_entry* client,
     int server_sock)
 {
+    struct in_addr client_addr;
+    in_port_t client_port;
+
     assert(client != NULL);
 
     (void)received_header;
@@ -66,12 +68,20 @@ void on_disconnect_client(
                           inet_ntoa(client->addr));
     }
 
+    print_message(__func__, "client %s state changed from %s to %s\n",
+                  inet_ntoa(client->id),
+                  dhcp_server_state_to_string(client->state),
+                  dhcp_server_state_to_string(DHCP_SERVER_STATE_TERMINATE));
+
     /* クライアントの情報をリンクリストから削除 */
-    print_message(__func__,
-                  "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 "disconnected\n",
-                  inet_ntoa(client->id), client->port);
+    client_addr = client->id;
+    client_port = client->port;
 
     remove_dhcp_client(client);
+
+    print_message(__func__,
+                  "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 ") disconnected\n",
+                  inet_ntoa(client_addr), client_port);
 
     return;
 }
@@ -157,7 +167,7 @@ void on_discover_received(
     /* クライアントに割り当てたIPアドレス, サブネットマスクの組とTTLを出力 */
     print_message(__func__,
                   "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client %s\n",
-                  addr_str, mask_str, dhcp_server_config.ttl);
+                  addr_str, mask_str, dhcp_server_config.ttl, inet_ntoa(client->id));
     
     /* 割り当て可能なIPアドレスが存在 */
     /* OFFERメッセージを作成 */
@@ -687,11 +697,15 @@ bool setup_server_socket(int* server_sock)
     
     /* ソケットの作成 */
     if ((*server_sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        print_error(__func__, "socket() failed: %s\n", strerror(errno));
+        print_error(__func__,
+                    "socket() failed: %s, failed to create server socket\n",
+                    strerror(errno));
         return false;
     }
 
-    print_message(__func__, "server socket (fd: %d) created\n", *server_sock);
+    print_message(__func__,
+                  "server socket (fd: %d) successfully created\n",
+                  *server_sock);
     
     /* ソケットに割り当てるアドレスの設定 */
     memset(&server_addr, 0, sizeof(server_addr));
@@ -800,6 +814,7 @@ void handle_alrm(int server_sock)
 
 /*
  * サーバが受信したDHCPヘッダの処理
+ * DHCPヘッダの内容からイベントを判定
  */
 void handle_dhcp_header(
     const struct sockaddr_in* client_addr,
@@ -808,9 +823,9 @@ void handle_dhcp_header(
 {
     struct dhcp_client_list_entry* client;
 
-    print_error(__func__, "message received from %s (port: %d)\n",
-                inet_ntoa(client_addr->sin_addr),
-                ntohs(client_addr->sin_port));
+    print_message(__func__, "message received from %s (port: %d)\n",
+                  inet_ntoa(client_addr->sin_addr),
+                  ntohs(client_addr->sin_port));
     
     /* クライアントの情報を取得 */
     /* 新規のクライアントである場合はNULL */
@@ -873,7 +888,7 @@ void handle_dhcp_header(
         case DHCP_HEADER_TYPE_REQUEST:
             /* REQUESTメッセージである場合 */
             /* Codeフィールドのチェック */
-            if (header->code != DHCP_HEADER_CODE_REQUEST_ALLOC ||
+            if (header->code != DHCP_HEADER_CODE_REQUEST_ALLOC &&
                 header->code != DHCP_HEADER_CODE_REQUEST_TIME_EXT) {
                 print_error(__func__,
                             "invalid 'type' field value %" PRIu8 ", "
@@ -976,7 +991,7 @@ bool run_dhcp_server()
         return false;
     }
 
-    /* シグナルSIGALRMのハンドラを設定 */
+    /* シグナルハンドラを設定 */
     if (!setup_signal_handlers()) {
         print_error(__func__, "setup_sigalrm_handler() failed\n");
         return false;
@@ -1007,7 +1022,8 @@ bool run_dhcp_server()
             return false;
         }
         
-        /* ソケットからDHCPヘッダを受信 */
+        /* DHCPヘッダを受信 */
+        addr_len = sizeof(client_addr);
         recv_bytes = recvfrom(server_sock, &recv_header, sizeof(recv_header), 0,
                               (struct sockaddr*)&client_addr, &addr_len);
         recv_errno = errno;

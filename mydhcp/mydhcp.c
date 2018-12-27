@@ -22,12 +22,12 @@ void dump_dhcp_header(FILE* fp, const struct dhcp_header* header)
 
     if (inet_ntop(AF_INET, &header->addr, addr_str, sizeof(addr_str)) == NULL) {
         print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
-        return;
+        *addr_str = '\0';
     }
 
     if (inet_ntop(AF_INET, &header->mask, mask_str, sizeof(mask_str)) == NULL) {
         print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
-        return;
+        *mask_str = '\0';
     }
 
     fprintf(fp,
@@ -35,7 +35,7 @@ void dump_dhcp_header(FILE* fp, const struct dhcp_header* header)
             "addr: %s, mask: %s\n",
             dhcp_header_type_to_string(header->type),
             dhcp_header_code_to_string(header->type, header->code),
-            header->ttl, addr_str, mask_str);
+            ntohs(header->ttl), addr_str, mask_str);
 }
 
 /*
@@ -51,7 +51,8 @@ const char* dhcp_header_type_to_string(uint8_t type)
         [DHCP_HEADER_TYPE_RELEASE] = "DHCP_HEADER_TYPE_RELEASE",
     };
 
-    return header_type_str[type];
+    return header_type_str[type] ?
+           header_type_str[type] : "Unknown";
 }
 
 /*
@@ -80,6 +81,8 @@ const char* dhcp_header_code_to_string(uint8_t type, uint8_t code)
         [DHCP_HEADER_TYPE_ACK] = header_code_ack_str,
     };
 
-    return header_code_str[type][code];
+    return header_code_str[type] ?
+           header_code_str[type][code] ?
+           header_code_str[type][code] : "Unknown" : "Unknown";
 }
 
