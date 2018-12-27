@@ -103,6 +103,7 @@ bool on_init(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(NULL, context);
         return false;
     }
 
@@ -111,6 +112,7 @@ bool on_init(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(NULL, context);
         return false;
     }
 
@@ -176,6 +178,7 @@ bool on_offer_received(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(NULL, context);
         return false;
     }
 
@@ -184,6 +187,7 @@ bool on_offer_received(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(NULL, context);
         return false;
     }
 
@@ -258,6 +262,7 @@ bool on_offer_timeout(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -266,6 +271,7 @@ bool on_offer_timeout(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
     
@@ -365,9 +371,7 @@ bool on_alloc_negative_ack_received(
                   addr_str, mask_str, ntohs(context->ttl));
 
     /* サーバとの通信を終了 */
-    on_disconnect_server(received_header, context);
-
-    return true;
+    return on_disconnect_server(received_header, context);
 }
 
 /*
@@ -407,6 +411,7 @@ bool on_alloc_ack_timeout(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -415,6 +420,7 @@ bool on_alloc_ack_timeout(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
     
@@ -427,7 +433,7 @@ bool on_alloc_ack_timeout(
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY));
 
     /* クライアントの情報を更新 */
-    context->state = DHCP_CLIENT_STATE_WAIT_ALLOC_ACK;
+    context->state = DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY;
     context->ttl_counter = TIMEOUT_VALUE;
     
     return true;
@@ -470,6 +476,7 @@ bool on_half_ttl_passed(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -478,6 +485,7 @@ bool on_half_ttl_passed(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -494,6 +502,59 @@ bool on_half_ttl_passed(
     context->ttl_counter = TIMEOUT_VALUE;
     
     return true;
+}
+
+/*
+ * SIGHUPシグナルを受信した際の処理
+ */
+bool on_sighup(
+    const struct dhcp_header* received_header,
+    struct dhcp_client_context* context)
+{
+    ssize_t send_bytes;
+    struct dhcp_header header;
+    struct sockaddr_in server_addr;
+    
+    assert(received_header == NULL);
+    assert(context != NULL);
+
+    /* サーバのアドレス構造体を作成 */
+    memset(&server_addr, 0, sizeof(struct sockaddr_in));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(DHCP_SERVER_PORT);
+    server_addr.sin_addr.s_addr = context->server_addr.s_addr;
+
+    /* RELEASEメッセージの作成 */
+    memset(&header, 0, sizeof(struct dhcp_header));
+    header.type = DHCP_HEADER_TYPE_RELEASE;
+    header.addr = context->addr.s_addr;
+    
+    /* REQUESTメッセージを送信 */
+    send_bytes = sendto(context->client_sock, &header, sizeof(struct dhcp_header), 0,
+                        (struct sockaddr*)&server_addr, sizeof(server_addr));
+    
+    /* 送信に失敗した場合 */
+    if (send_bytes < 0) {
+        print_error(__func__,
+                    "sendto() failed: %s, could not send dhcp header to server %s\n",
+                    strerror(errno), inet_ntoa(context->server_addr));
+        return false;
+    }
+
+    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
+    if (send_bytes != sizeof(struct dhcp_header)) {
+        print_error(__func__,
+                    "could not send full dhcp header to server %s\n",
+                    inet_ntoa(context->server_addr));
+        return false;
+    }
+
+    print_message(__func__, "dhcp header has been sent to server %s\n",
+                  inet_ntoa(context->server_addr));
+    dump_dhcp_header(stderr, &header);
+    
+    /* サーバとの通信を終了 */
+    return on_disconnect_server(NULL, context);
 }
 
 /*
@@ -578,9 +639,7 @@ bool on_time_ext_negative_ack_received(
                   addr_str, mask_str, ntohs(context->ttl));
     
     /* サーバとの通信を終了 */
-    on_disconnect_server(received_header, context);
-
-    return true;
+    return on_disconnect_server(received_header, context);
 }
 
 /*
@@ -620,6 +679,7 @@ bool on_time_ext_ack_timeout(
         print_error(__func__,
                     "sendto() failed: %s, could not send dhcp header to server %s\n",
                     strerror(errno), inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -628,6 +688,7 @@ bool on_time_ext_ack_timeout(
         print_error(__func__,
                     "could not send full dhcp header to server %s\n",
                     inet_ntoa(context->server_addr));
+        on_disconnect_server(received_header, context);
         return false;
     }
 
@@ -721,6 +782,11 @@ struct dhcp_client_state_transition client_state_transition_table[] = {
         .handler = on_half_ttl_passed
     },
     {
+        .state = DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE,
+        .event = DHCP_CLIENT_EVENT_SIGHUP,
+        .handler = on_sighup
+    },
+    {
         .state = DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK,
         .event = DHCP_CLIENT_EVENT_ACK,
         .handler = on_time_ext_ack_received
@@ -775,6 +841,8 @@ bool handle_event(
                     "corresponding event handler not found, therefore "
                     "connection to pseudo-dhcp server %s will be shut down\n",
                     inet_ntoa(context->server_addr));
+        /* サーバとの接続を終了 */
+        on_disconnect_server(NULL, context);
         return false;
     }
 
@@ -830,51 +898,7 @@ bool handle_alrm(
 bool handle_hup(
     struct dhcp_client_context* context)
 {
-    ssize_t send_bytes;
-    struct dhcp_header header;
-    struct sockaddr_in server_addr;
-
-    assert(context != NULL);
-
-    /* サーバのアドレス構造体を作成 */
-    memset(&server_addr, 0, sizeof(struct sockaddr_in));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(DHCP_SERVER_PORT);
-    server_addr.sin_addr.s_addr = context->server_addr.s_addr;
-
-    /* RELEASEメッセージの作成 */
-    memset(&header, 0, sizeof(struct dhcp_header));
-    header.type = DHCP_HEADER_TYPE_RELEASE;
-    header.addr = context->addr.s_addr;
-    
-    /* REQUESTメッセージを送信 */
-    send_bytes = sendto(context->client_sock, &header, sizeof(struct dhcp_header), 0,
-                        (struct sockaddr*)&server_addr, sizeof(server_addr));
-    
-    /* 送信に失敗した場合 */
-    if (send_bytes < 0) {
-        print_error(__func__,
-                    "sendto() failed: %s, could not send dhcp header to server %s\n",
-                    strerror(errno), inet_ntoa(context->server_addr));
-        return false;
-    }
-
-    /* 送信サイズがDHCPヘッダのサイズと異なる場合 */
-    if (send_bytes != sizeof(struct dhcp_header)) {
-        print_error(__func__,
-                    "could not send full dhcp header to server %s\n",
-                    inet_ntoa(context->server_addr));
-        return false;
-    }
-
-    print_message(__func__, "dhcp header has been sent to server %s\n",
-                  inet_ntoa(context->server_addr));
-    dump_dhcp_header(stderr, &header);
-    
-    /* サーバとの通信を終了 */
-    on_disconnect_server(NULL, context);
-
-    return true;
+    return handle_event(NULL, context, DHCP_CLIENT_EVENT_SIGHUP);
 }
 
 /*
@@ -892,6 +916,7 @@ bool handle_dhcp_header(
                     "invalid dhcp header: "
                     "expected length was %zd bytes, but %zd were received\n",
                     sizeof(struct dhcp_header), recv_bytes);
+        handle_event(header, context, DHCP_CLIENT_EVENT_INVALID_HEADER);
         return false;
     }
 
@@ -1013,8 +1038,6 @@ bool run_dhcp_client(struct dhcp_client_context* context)
                 /* シグナルSIGALRMの処理 */
                 if (!handle_alrm(context)) {
                     print_error(__func__, "handle_alrm() failed\n");
-                    /* サーバとの通信を終了 */
-                    on_disconnect_server(NULL, context);
                     return false;
                 }
                 /* フラグを元に戻す */
@@ -1022,9 +1045,7 @@ bool run_dhcp_client(struct dhcp_client_context* context)
             } else if (recv_errno == EINTR && app_exit == 1) {
                 /* シグナルSIGHUPの処理 */
                 if (!handle_hup(context)) {
-                    print_error(__func__, "handle_sighup() failed\n");
-                    /* サーバとの通信を終了 */
-                    on_disconnect_server(NULL, context);
+                    print_error(__func__, "handle_hup() failed\n");
                     return false;
                 }
             } else {
@@ -1038,8 +1059,6 @@ bool run_dhcp_client(struct dhcp_client_context* context)
             /* 受信したDHCPヘッダの処理 */
             if (!handle_dhcp_header(recv_bytes, &recv_header, context)) {
                 print_error(__func__, "handle_dhcp_header() failed\n");
-                /* サーバとの通信を終了 */
-                on_disconnect_server(&recv_header, context);
                 return false;
             }
         }
