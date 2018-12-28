@@ -197,7 +197,7 @@ bool on_offer_received(
         return false;
     }
 
-    print_message(__func__, "dhcp header has been sent to server %s\n",
+    print_message(__func__, "dhcp header has been sent to server %s: ",
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
@@ -446,7 +446,7 @@ bool on_alloc_ack_timeout(
         return false;
     }
     
-    print_message(__func__, "dhcp header has been sent to server %s\n",
+    print_message(__func__, "dhcp header has been sent to server %s: ",
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
@@ -514,7 +514,7 @@ bool on_half_ttl_passed(
         return false;
     }
 
-    print_message(__func__, "dhcp header has been sent to server %s\n",
+    print_message(__func__, "dhcp header has been sent to server %s: ",
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
@@ -579,7 +579,7 @@ bool on_sighup(
         return false;
     }
 
-    print_message(__func__, "dhcp header has been sent to server %s\n",
+    print_message(__func__, "dhcp header has been sent to server %s: ",
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
@@ -728,7 +728,7 @@ bool on_time_ext_ack_timeout(
         return false;
     }
 
-    print_message(__func__, "dhcp header has been sent to server %s\n",
+    print_message(__func__, "dhcp header has been sent to server %s: ",
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
