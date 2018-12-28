@@ -68,7 +68,11 @@ void on_disconnect_client(
                           inet_ntoa(client->addr));
     }
 
-    print_message(__func__, "client %s state changed from %s to %s\n",
+    print_message(__func__,
+                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  " state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_TERMINATE));
@@ -80,7 +84,9 @@ void on_disconnect_client(
 
     /* クライアントの情報をリンクリストから削除 */
     print_message(__func__,
-                  "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 ") disconnected\n",
+                  ANSI_ESCAPE_COLOR_BLUE
+                  "remove_dhcp_client() succeeded: client %s (port: %" PRIu16 ") disconnected"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client_addr), client_port);
 
     return;
@@ -115,7 +121,10 @@ void on_discover_received(
     /* 割り当て可能なIPアドレスを取得 */
     /* 割り当て可能なIPアドレスがない場合 */
     if (!get_available_ip_addr(available_ip_addr_list_head, &addr, &mask)) {
-        print_error(__func__, "get_available_ip_addr() failed: no available ip address found\n");
+        print_error(__func__,
+                    ANSI_ESCAPE_COLOR_RED
+                    "get_available_ip_addr() failed: no available ip address found"
+                    ANSI_ESCAPE_COLOR_RESET "\n");
 
         /* OFFERメッセージを作成 */
         memset(&header, 0, sizeof(struct dhcp_header));
@@ -169,7 +178,9 @@ void on_discover_received(
 
     /* クライアントに割り当てたIPアドレス, サブネットマスクの組とTTLを出力 */
     print_message(__func__,
-                  "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client %s\n",
+                  ANSI_ESCAPE_COLOR_BLUE
+                  "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client %s"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, mask_str, dhcp_server_config.ttl, inet_ntoa(client->id));
     
     /* 割り当て可能なIPアドレスが存在 */
@@ -208,7 +219,11 @@ void on_discover_received(
     print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client %s state changed from %s to %s\n",
+    print_message(__func__,
+                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  " state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST));
@@ -286,7 +301,11 @@ void on_alloc_request_received(
     print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client %s state changed from %s to %s\n",
+    print_message(__func__,
+                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  " state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
@@ -353,8 +372,10 @@ void on_invalid_alloc_request_received(
     dump_dhcp_header(stderr, &header);
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
                   "invalid ip address allocation request received, "
-                  "therefore connection to client %s will be shut down\n",
+                  "therefore connection to client %s will be shut down"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id));
 
     /* クライアントとの接続を終了 */
@@ -419,7 +440,11 @@ void on_wait_request_timeout(
     print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client %s state changed from %s to %s\n",
+    print_message(__func__,
+                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET 
+                  " state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST_RETRY));
@@ -491,7 +516,11 @@ void on_time_ext_request_received(
     print_message(__func__, "dhcp header has been sent to client %s: ", inet_ntoa(client->id));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client %s state changed from %s to %s\n",
+    print_message(__func__,
+                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  " state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
@@ -558,8 +587,10 @@ void on_invalid_time_ext_request_received(
     dump_dhcp_header(stderr, &header);
     
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
                   "invalid time extension request received, "
-                  "therefore connection to client %s will be shut down\n",
+                  "therefore connection to client %s will be shut down"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id));
 
     /* クライアントとの接続を終了 */
@@ -580,8 +611,10 @@ void on_release_received(
     assert(client != NULL);
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_BLUE
                   "release message received, "
-                  "therefore connection to client %s will be shut down\n",
+                  "therefore connection to client %s will be shut down"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id));
 
     /* クライアントとの接続を終了 */
@@ -617,8 +650,10 @@ void on_ip_address_ttl_timeout(
     }
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
                   "ttl of ip address %s assigned to client %s expired, "
-                  "therefore connection to client %s will be shut down\n",
+                  "therefore connection to client %s will be shut down"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, id_str, id_str);
 
     /* クライアントとの接続を終了 */
@@ -767,9 +802,11 @@ void handle_event(
     /* 該当するクライアントとの処理を終了 */
     if (handler == NULL) {
         print_error(__func__,
+                    ANSI_ESCAPE_COLOR_RED
                     "lookup_server_state_transition_table() failed: "
                     "corresponding event handler not found, therefore "
-                    "connection to client %s will be shut down\n",
+                    "connection to client %s will be shut down"
+                    ANSI_ESCAPE_COLOR_RESET "\n",
                     inet_ntoa(client->id));
         /* クライアントとの接続を終了 */
         on_disconnect_client(header, client, server_sock);
@@ -809,7 +846,11 @@ void handle_alrm(int server_sock)
                 *addr_str = '\0';
             }
 
-            print_message(__func__, "ttl of ip address %s (client: %s): %" PRIu16 "\n",
+            print_message(__func__,
+                          "ttl of ip address "
+                          ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                          "(client: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                          "): " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
                           addr_str, id_str, iter->ttl_counter);
         }
 
@@ -864,8 +905,10 @@ void handle_dhcp_header(
     /* 受信したデータサイズとDHCPヘッダのサイズが異なる場合 */
     if (recv_bytes != sizeof(struct dhcp_header)) {
         print_error(__func__,
+                    ANSI_ESCAPE_COLOR_RED
                     "invalid dhcp header: "
-                    "expected length was %zd bytes, but %zd were received\n",
+                    "expected length was %zd bytes, but %zd were received"
+                    ANSI_ESCAPE_COLOR_RESET "\n",
                     sizeof(struct dhcp_header), recv_bytes);
         /* プロトコルに整合しないDHCPヘッダの処理 */
         handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
@@ -887,8 +930,10 @@ void handle_dhcp_header(
                 ntohl(header->addr) != 0 ||
                 ntohl(header->mask) != 0) {
                 print_error(__func__,
+                            ANSI_ESCAPE_COLOR_RED
                             "invalid dhcp header: "
-                            "dhcp header fields except 'type' should be set to zero\n");
+                            "dhcp header fields except 'type' should be set to zero"
+                            ANSI_ESCAPE_COLOR_RESET "\n");
                 /* プロトコルに整合しないDHCPヘッダの処理 */
                 handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
@@ -904,8 +949,10 @@ void handle_dhcp_header(
             if (header->code != DHCP_HEADER_CODE_REQUEST_ALLOC &&
                 header->code != DHCP_HEADER_CODE_REQUEST_TIME_EXT) {
                 print_error(__func__,
+                            ANSI_ESCAPE_COLOR_RED
                             "invalid 'type' field value %" PRIu8 ", "
-                            "%" PRIu8 " (%s) or %" PRIu8 " (%s) expected",
+                            "%" PRIu8 " (%s) or %" PRIu8 " (%s) expected"
+                            ANSI_ESCAPE_COLOR_RESET "\n",
                             header->code,
                             DHCP_HEADER_CODE_REQUEST_ALLOC,
                             dhcp_header_code_to_string(DHCP_HEADER_TYPE_REQUEST,
@@ -944,8 +991,9 @@ void handle_dhcp_header(
             if (client->addr.s_addr != header->addr ||
                 client->mask.s_addr != header->mask) {
                 print_error(__func__,
-                            "invalid 'addr' field value %s (mask: %s), "
-                            "%s (mask: %s) expected\n",
+                            ANSI_ESCAPE_COLOR_RED
+                            "invalid 'addr' field value %s (mask: %s), %s (mask: %s) expected"
+                            ANSI_ESCAPE_COLOR_RESET "\n",
                             header_addr_str, header_mask_str,
                             client_addr_str, client_mask_str);
                 
@@ -961,8 +1009,10 @@ void handle_dhcp_header(
             /* TTLフィールドが大き過ぎる場合はエラー */
             if (ntohs(header->ttl) > ntohs(client->ttl)) {
                 print_error(__func__,
+                            ANSI_ESCAPE_COLOR_RED
                             "invalid 'ttl' field value %" PRIu16 ", "
-                            "less than or equal to %" PRIu16 " expected",
+                            "less than or equal to %" PRIu16 " expected"
+                            ANSI_ESCAPE_COLOR_RESET "\n",
                             ntohs(header->ttl), ntohs(client->ttl));
                 
                 /* 不正なREQUESTメッセージの処理 */
@@ -987,8 +1037,10 @@ void handle_dhcp_header(
                 ntohs(header->ttl) != 0 ||
                 ntohl(header->mask) != 0) {
                 print_error(__func__,
+                            ANSI_ESCAPE_COLOR_RED
                             "invalid dhcp header: "
-                            "dhcp header fields except 'ttl' and 'mask' should be set to zero\n");
+                            "dhcp header fields except 'ttl' and 'mask' should be set to zero"
+                            ANSI_ESCAPE_COLOR_RESET "\n");
                 /* プロトコルに整合しないDHCPヘッダの処理 */
                 handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
                 return;
@@ -1000,7 +1052,10 @@ void handle_dhcp_header(
     }
     
     /* それ以外のタイプである場合はエラー */
-    print_error(__func__, "invalid dhcp header: unknown message type: %s\n",
+    print_error(__func__,
+                ANSI_ESCAPE_COLOR_RED
+                "invalid dhcp header: unknown message type: %s"
+                ANSI_ESCAPE_COLOR_RESET "\n",
                 dhcp_header_type_to_string(header->type));
     handle_event(header, client, DHCP_SERVER_EVENT_INVALID_HEADER, server_sock);
 

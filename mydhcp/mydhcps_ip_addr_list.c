@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include "mydhcps_ip_addr_list.h"
 #include "util.h"
@@ -42,6 +44,8 @@ void free_ip_addr_list(struct ip_addr_list_entry* list_head)
  */
 void dump_ip_addr_list(FILE* fp, const struct ip_addr_list_entry* list_head)
 {
+    char addr_str[INET_ADDRSTRLEN];
+    char mask_str[INET_ADDRSTRLEN];
     struct ip_addr_list_entry* iter;
 
     assert(list_head != NULL);
@@ -50,8 +54,21 @@ void dump_ip_addr_list(FILE* fp, const struct ip_addr_list_entry* list_head)
 
     list_for_each_entry(iter, &list_head->list_entry,
                         struct ip_addr_list_entry, list_entry) {
-        fprintf(fp, "%s", inet_ntoa(iter->addr));
-        fprintf(fp, "\t%s\n", inet_ntoa(iter->mask));
+        /* IPアドレスとサブネットマスクを文字列に変換 */
+        if (inet_ntop(AF_INET, &iter->addr, addr_str, sizeof(addr_str)) == NULL) {
+            print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+            *addr_str = '\0';
+        }
+
+        if (inet_ntop(AF_INET, &iter->mask, mask_str, sizeof(mask_str)) == NULL) {
+            print_error(__func__, "inet_ntop() failed: %s\n", strerror(errno));
+            *mask_str = '\0';
+        }
+
+        fprintf(fp,
+                ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                "\t" ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                addr_str, mask_str);
     }
 }
 

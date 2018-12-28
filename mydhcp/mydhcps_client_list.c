@@ -52,8 +52,12 @@ void dump_client_list(FILE* fp, const struct dhcp_client_list_entry* list_head)
     list_for_each_entry(iter, &list_head->list_entry,
                         struct dhcp_client_list_entry, list_entry) {
         fprintf(fp,
-                "client id: %s, state: %s, ttl_counter: %" PRIu16 ", "
-                "addr: %s, mask: %s, ttl: %" PRIu16 "\n",
+                "client id: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                ", state: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                ", ttl_counter: " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET
+                ", addr: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                ", mask: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                ", ttl: " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
                 inet_ntoa(iter->id), dhcp_server_state_to_string(iter->state),
                 iter->ttl_counter, inet_ntoa(iter->addr),
                 inet_ntoa(iter->mask), ntohs(iter->ttl));

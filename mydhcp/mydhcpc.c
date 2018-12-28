@@ -37,7 +37,10 @@ bool on_disconnect_server(
         return false;
     }
 
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_TERMINATE));
     
@@ -120,7 +123,10 @@ bool on_init(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_OFFER));
 
@@ -195,7 +201,10 @@ bool on_offer_received(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_ALLOC_ACK));
 
@@ -223,7 +232,10 @@ bool on_offer_error_received(
     assert(received_header->code == DHCP_HEADER_CODE_OFFER_NG);
     assert(context != NULL);
 
-    print_message(__func__, "available ip address and mask not found\n");
+    print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
+                  "available ip address and mask not found"
+                  ANSI_ESCAPE_COLOR_RESET "\n");
     
     /* サーバとの通信を終了 */
     return on_disconnect_server(received_header, context);
@@ -279,7 +291,10 @@ bool on_offer_timeout(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
 
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_OFFER_RETRY));
 
@@ -324,10 +339,15 @@ bool on_alloc_ack_received(
     }
 
     print_message(__func__,
-                  "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client\n",
+                  ANSI_ESCAPE_COLOR_BLUE
+                  "ip address %s (mask: %s, ttl: %" PRIu16 ") is assigned to client"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, mask_str, ntohs(context->ttl));
 
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE));
 
@@ -366,8 +386,10 @@ bool on_alloc_negative_ack_received(
     }
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
                   "ip address %s (mask: %s, ttl: %" PRIu16 ") could not be assigned, "
-                  "because of invalid arguments specified in request message\n",
+                  "because of invalid arguments specified in request message"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, mask_str, ntohs(context->ttl));
 
     /* サーバとの通信を終了 */
@@ -428,7 +450,10 @@ bool on_alloc_ack_timeout(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY));
 
@@ -493,7 +518,10 @@ bool on_half_ttl_passed(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK));
     
@@ -517,6 +545,8 @@ bool on_sighup(
     
     assert(received_header == NULL);
     assert(context != NULL);
+
+    print_message(__func__, "signal SIGHUP has been received\n");
 
     /* サーバのアドレス構造体を作成 */
     memset(&server_addr, 0, sizeof(struct sockaddr_in));
@@ -590,12 +620,16 @@ bool on_time_ext_ack_received(
     }
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_BLUE
                   "time extension request for ip address %s "
-                  "(mask: %s, ttl: %" PRIu16 ") is acknowledged\n",
+                  "(mask: %s, ttl: %" PRIu16 ") is acknowledged"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, mask_str, ttl);
 
     print_message(__func__,
-                  "client state changed from %s to %s\n",
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE));
 
@@ -634,8 +668,10 @@ bool on_time_ext_negative_ack_received(
     }
 
     print_message(__func__,
+                  ANSI_ESCAPE_COLOR_RED
                   "time extension request for ip address %s "
-                  "(mask: %s, ttl: %" PRIu16 ") is denied\n",
+                  "(mask: %s, ttl: %" PRIu16 ") is denied"
+                  ANSI_ESCAPE_COLOR_RESET "\n",
                   addr_str, mask_str, ntohs(context->ttl));
     
     /* サーバとの通信を終了 */
@@ -696,7 +732,10 @@ bool on_time_ext_ack_timeout(
                   inet_ntoa(context->server_addr));
     dump_dhcp_header(stderr, &header);
     
-    print_message(__func__, "client state changed from %s to %s\n",
+    print_message(__func__,
+                  "client state changed from "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK_RETRY));
     
@@ -837,9 +876,11 @@ bool handle_event(
     /* 状態とイベントに対応する遷移関数がない場合 */
     if (handler == NULL) {
         print_error(__func__,
+                    ANSI_ESCAPE_COLOR_RED
                     "lookup_client_state_transition_table() failed: "
                     "corresponding event handler not found, therefore "
-                    "connection to pseudo-dhcp server %s will be shut down\n",
+                    "connection to pseudo-dhcp server %s will be shut down"
+                    ANSI_ESCAPE_COLOR_RESET "\n",
                     inet_ntoa(context->server_addr));
         /* サーバとの接続を終了 */
         on_disconnect_server(NULL, context);
@@ -875,7 +916,11 @@ bool handle_alrm(
             *mask_str = '\0';
         }
 
-        print_message(__func__, "ttl of ip address %s (mask: %s): %" PRIu16 "\n",
+        print_message(__func__,
+                      "ttl of ip address "
+                      ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                      " (mask: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                      "): " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
                       addr_str, mask_str, context->ttl_counter);
     }
 
@@ -959,7 +1004,10 @@ bool handle_dhcp_header(
     }
 
     /* それ以外のタイプである場合はエラー */
-    print_error(__func__, "invalid dhcp header: unknown message type: %s\n",
+    print_error(__func__,
+                ANSI_ESCAPE_COLOR_RED
+                "invalid dhcp header: unknown message type: %s"
+                ANSI_ESCAPE_COLOR_RESET "\n",
                 dhcp_header_type_to_string(header->type));
     return handle_event(header, context, DHCP_CLIENT_EVENT_INVALID_HEADER);
 }
