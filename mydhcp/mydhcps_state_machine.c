@@ -2,6 +2,7 @@
 /* 情報工学科3年 学籍番号61610117 杉浦 圭祐 */
 /* mydhcps_state_machine.c */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "mydhcps_state_machine.h"
@@ -12,19 +13,15 @@
 const char* dhcp_server_state_to_string(enum dhcp_server_state state)
 {
     static const char* server_state_str[] = {
-        [DHCP_SERVER_STATE_NONE]
-            = "DHCP_SERVER_STATE_NONE",
-        [DHCP_SERVER_STATE_INIT]
-            = "DHCP_SERVER_STATE_INIT",
-        [DHCP_SERVER_STATE_WAIT_REQUEST]
-            = "DHCP_SERVER_STATE_WAIT_REQUEST",
-        [DHCP_SERVER_STATE_WAIT_REQUEST_RETRY]
-            = "DHCP_SERVER_STATE_WAIT_REQUEST_RETRY",
-        [DHCP_SERVER_STATE_IP_ADDRESS_IN_USE]
-            = "DHCP_SERVER_STATE_IP_ADDRESS_IN_USE",
-        [DHCP_SERVER_STATE_TERMINATE]
-            = "DHCP_SERVER_STATE_TERMINATE",
+        [DHCP_SERVER_STATE_NONE]                = "NONE",
+        [DHCP_SERVER_STATE_INIT]                = "INIT",
+        [DHCP_SERVER_STATE_WAIT_REQUEST]        = "WAIT_REQUEST",
+        [DHCP_SERVER_STATE_WAIT_REQUEST_RETRY]  = "WAIT_REQUEST_RETRY",
+        [DHCP_SERVER_STATE_IP_ADDRESS_IN_USE]   = "IP_ADDRESS_IN_USE",
+        [DHCP_SERVER_STATE_TERMINATE]           = "TERMINATE",
     };
+
+    assert(state <= DHCP_SERVER_STATE_TERMINATE);
 
     return server_state_str[state] ?
            server_state_str[state] : "Unknown";
@@ -36,23 +33,17 @@ const char* dhcp_server_state_to_string(enum dhcp_server_state state)
 const char* dhcp_server_event_to_string(enum dhcp_server_event event)
 {
     static const char* server_event_str[] = {
-        [DHCP_SERVER_EVENT_NONE]
-            = "DHCP_SERVER_EVENT_NONE",
-        [DHCP_SERVER_EVENT_DISCOVER]
-            = "DHCP_SERVER_EVENT_DISCOVER",
-        [DHCP_SERVER_EVENT_ALLOC_REQUEST]
-            = "DHCP_SERVER_EVENT_ALLOC_REQUEST",
-        [DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST]
-            = "DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST",
-        [DHCP_SERVER_EVENT_TIME_EXT_REQUEST]
-            = "DHCP_SERVER_EVENT_TIME_EXT_REQUEST",
-        [DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST]
-            = "DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST",
-        [DHCP_SERVER_EVENT_RELEASE]
-            = "DHCP_SERVER_EVENT_RELEASE",
-        [DHCP_SERVER_EVENT_TTL_TIMEOUT]
-            = "DHCP_SERVER_EVENT_TTL_TIMEOUT",
+        [DHCP_SERVER_EVENT_NONE]                      = "NONE",
+        [DHCP_SERVER_EVENT_DISCOVER]                  = "DISCOVER",
+        [DHCP_SERVER_EVENT_ALLOC_REQUEST]             = "ALLOC_REQUEST",
+        [DHCP_SERVER_EVENT_INVALID_ALLOC_REQUEST]     = "INVALID_ALLOC_REQUEST",
+        [DHCP_SERVER_EVENT_TIME_EXT_REQUEST]          = "TIME_EXT_REQUEST",
+        [DHCP_SERVER_EVENT_INVALID_TIME_EXT_REQUEST]  = "INVALID_TIME_EXT_REQUEST",
+        [DHCP_SERVER_EVENT_RELEASE]                   = "RELEASE",
+        [DHCP_SERVER_EVENT_TTL_TIMEOUT]               = "TTL_TIMEOUT",
     };
+
+    assert(event <= DHCP_SERVER_EVENT_TTL_TIMEOUT);
 
     return server_event_str[event] ?
            server_event_str[event] : "Unknown";

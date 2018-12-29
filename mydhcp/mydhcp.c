@@ -47,12 +47,14 @@ void dump_dhcp_header(FILE* fp, const struct dhcp_header* header)
 const char* dhcp_header_type_to_string(uint8_t type)
 {
     static const char* header_type_str[] = {
-        [DHCP_HEADER_TYPE_DISCOVER] = "DHCP_HEADER_TYPE_DISCOVER",
-        [DHCP_HEADER_TYPE_OFFER] = "DHCP_HEADER_TYPE_OFFER",
-        [DHCP_HEADER_TYPE_REQUEST] = "DHCP_HEADER_TYPE_REQUEST",
-        [DHCP_HEADER_TYPE_ACK] = "DHCP_HEADER_TYPE_ACK",
-        [DHCP_HEADER_TYPE_RELEASE] = "DHCP_HEADER_TYPE_RELEASE",
+        [DHCP_HEADER_TYPE_DISCOVER] = "DISCOVER",
+        [DHCP_HEADER_TYPE_OFFER]    = "OFFER",
+        [DHCP_HEADER_TYPE_REQUEST]  = "REQUEST",
+        [DHCP_HEADER_TYPE_ACK]      = "ACK",
+        [DHCP_HEADER_TYPE_RELEASE]  = "RELEASE",
     };
+
+    assert(type <= DHCP_HEADER_TYPE_RELEASE);
 
     return header_type_str[type] ?
            header_type_str[type] : "Unknown";
@@ -64,18 +66,18 @@ const char* dhcp_header_type_to_string(uint8_t type)
 const char* dhcp_header_code_to_string(uint8_t type, uint8_t code)
 {
     static const char* header_code_offer_str[] = {
-        [DHCP_HEADER_CODE_OFFER_OK] = "DHCP_HEADER_CODE_OFFER_OK",
-        [DHCP_HEADER_CODE_OFFER_NG] = "DHCP_HEADER_CODE_OFFER_NG",
+        [DHCP_HEADER_CODE_OFFER_OK] = "OFFER_OK",
+        [DHCP_HEADER_CODE_OFFER_NG] = "OFFER_NG",
     };
 
     static const char* header_code_request_str[] = {
-        [DHCP_HEADER_CODE_REQUEST_ALLOC] = "DHCP_HEADER_CODE_REQUEST_ALLOC",
-        [DHCP_HEADER_CODE_REQUEST_TIME_EXT] = "DHCP_HEADER_CODE_REQUEST_TIME_EXT",
+        [DHCP_HEADER_CODE_REQUEST_ALLOC]    = "REQUEST_ALLOC",
+        [DHCP_HEADER_CODE_REQUEST_TIME_EXT] = "REQUEST_TIME_EXT",
     };
 
     static const char* header_code_ack_str[] = {
-        [DHCP_HEADER_CODE_ACK_OK] = "DHCP_HEADER_CODE_ACK_OK",
-        [DHCP_HEADER_CODE_ACK_NG] = "DHCP_HEADER_CODE_ACK_NG",
+        [DHCP_HEADER_CODE_ACK_OK] = "ACK_OK",
+        [DHCP_HEADER_CODE_ACK_NG] = "ACK_NG",
     };
 
     static const char** header_code_str[] = {
@@ -83,6 +85,12 @@ const char* dhcp_header_code_to_string(uint8_t type, uint8_t code)
         [DHCP_HEADER_TYPE_REQUEST] = header_code_request_str,
         [DHCP_HEADER_TYPE_ACK] = header_code_ack_str,
     };
+
+    assert(type <= DHCP_HEADER_TYPE_ACK);
+    assert((type == DHCP_HEADER_TYPE_OFFER) ? (code <= DHCP_HEADER_CODE_OFFER_NG) :
+           (type == DHCP_HEADER_TYPE_REQUEST) ? (code <= DHCP_HEADER_CODE_REQUEST_TIME_EXT) :
+           (type == DHCP_HEADER_TYPE_ACK) ? (code <= DHCP_HEADER_CODE_ACK_NG) :
+           true);
 
     return header_code_str[type] ?
            header_code_str[type][code] ?

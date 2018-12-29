@@ -2,6 +2,7 @@
 /* 情報工学科3年 学籍番号61610117 杉浦 圭祐 */
 /* mydhcpc_state_machine.c */
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "mydhcpc_state_machine.h"
@@ -12,27 +13,19 @@
 const char* dhcp_client_state_to_string(enum dhcp_client_state state)
 {
     static const char* client_state_str[] = {
-        [DHCP_CLIENT_STATE_NONE]
-            = "DHCP_CLIENT_STATE_NONE",
-        [DHCP_CLIENT_STATE_INIT]
-            = "DHCP_CLIENT_STATE_INIT",
-        [DHCP_CLIENT_STATE_WAIT_OFFER]
-            = "DHCP_CLIENT_STATE_WAIT_OFFER",
-        [DHCP_CLIENT_STATE_WAIT_OFFER_RETRY]
-            = "DHCP_CLIENT_STATE_WAIT_OFFER_RETRY",
-        [DHCP_CLIENT_STATE_WAIT_ALLOC_ACK]
-            = "DHCP_CLIENT_STATE_WAIT_ALLOC_ACK",
-        [DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY]
-            = "DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY",
-        [DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE]
-            = "DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE",
-        [DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK]
-            = "DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK",
-        [DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK_RETRY]
-            = "DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK_RETRY",
-        [DHCP_CLIENT_STATE_TERMINATE]
-            = "DHCP_CLIENT_STATE_TERMINATE",
+        [DHCP_CLIENT_STATE_NONE]                    = "NONE",
+        [DHCP_CLIENT_STATE_INIT]                    = "INIT",
+        [DHCP_CLIENT_STATE_WAIT_OFFER]              = "WAIT_OFFER",
+        [DHCP_CLIENT_STATE_WAIT_OFFER_RETRY]        = "WAIT_OFFER_RETRY",
+        [DHCP_CLIENT_STATE_WAIT_ALLOC_ACK]          = "WAIT_ALLOC_ACK",
+        [DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY]    = "AIT_ALLOC_ACK_RETRY",
+        [DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE]       = "IP_ADDRESS_IN_USE",
+        [DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK]       = "WAIT_TIME_EXT_ACK",
+        [DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK_RETRY] = "WAIT_TIME_EXT_ACK_RETRY",
+        [DHCP_CLIENT_STATE_TERMINATE]               = "TERMINATE",
     };
+
+    assert(state <= DHCP_CLIENT_STATE_TERMINATE);
 
     return client_state_str[state] ?
            client_state_str[state] : "Unknown";
@@ -44,25 +37,18 @@ const char* dhcp_client_state_to_string(enum dhcp_client_state state)
 const char* dhcp_client_event_to_string(enum dhcp_client_event event)
 {
     static const char* client_event_str[] = {
-        [DHCP_CLIENT_EVENT_NO_EVENT]
-            = "DHCP_CLIENT_EVENT_NO_EVENT",
-        [DHCP_CLIENT_EVENT_INVALID_HEADER]
-            = "DHCP_CLIENT_EVENT_INVALID_HEADER",
-        [DHCP_CLIENT_EVENT_ACK]
-            = "DHCP_CLIENT_EVENT_ACK",
-        [DHCP_CLIENT_EVENT_NACK]
-            = "DHCP_CLIENT_EVENT_NACK",
-        [DHCP_CLIENT_EVENT_OFFER]
-            = "DHCP_CLIENT_EVENT_OFFER",
-        [DHCP_CLIENT_EVENT_INVALID_OFFER]
-            = "DHCP_CLIENT_EVENT_INVALID_OFFER",
-        [DHCP_CLIENT_EVENT_HALF_TTL]
-            = "DHCP_CLIENT_EVENT_HALF_TTL",
-        [DHCP_CLIENT_EVENT_SIGHUP]
-            = "DHCP_CLIENT_EVENT_SIGHUP",
-        [DHCP_CLIENT_EVENT_TIMEOUT]
-            = "DHCP_CLIENT_EVENT_TIMEOUT",
+        [DHCP_CLIENT_EVENT_NO_EVENT]        = "NO_EVENT",
+        [DHCP_CLIENT_EVENT_INVALID_HEADER]  = "INVALID_HEADER",
+        [DHCP_CLIENT_EVENT_ACK]             = "ACK",
+        [DHCP_CLIENT_EVENT_NACK]            = "NACK",
+        [DHCP_CLIENT_EVENT_OFFER]           = "OFFER",
+        [DHCP_CLIENT_EVENT_INVALID_OFFER]   = "INVALID_OFFER",
+        [DHCP_CLIENT_EVENT_HALF_TTL]        = "HALF_TTL",
+        [DHCP_CLIENT_EVENT_SIGHUP]          = "SIGHUP",
+        [DHCP_CLIENT_EVENT_TIMEOUT]         = "TIMEOUT",
     };
+
+    assert(event <= DHCP_CLIENT_EVENT_TIMEOUT);
 
     return client_event_str[event] ?
            client_event_str[event] : "Unknown";
