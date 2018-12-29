@@ -66,8 +66,8 @@ void dump_ip_addr_list(FILE* fp, const struct ip_addr_list_entry* list_head)
         }
 
         fprintf(fp,
-                ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
-                "\t" ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
+                "\t" ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                 addr_str, mask_str);
     }
 }

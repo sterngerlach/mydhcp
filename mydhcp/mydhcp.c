@@ -31,11 +31,11 @@ void dump_dhcp_header(FILE* fp, const struct dhcp_header* header)
     }
 
     fprintf(fp,
-            "type: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET ", "
-            "code: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET ", "
-            "ttl: " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET ", "
-            "addr: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET ", "
-            "mask: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+            "type: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET ", "
+            "code: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET ", "
+            "ttl: " ANSI_ESCAPE_COLOR_GREEN "%" PRIu16 ANSI_ESCAPE_COLOR_RESET ", "
+            "addr: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET ", "
+            "mask: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
             dhcp_header_type_to_string(header->type),
             dhcp_header_code_to_string(header->type, header->code),
             ntohs(header->ttl), addr_str, mask_str);

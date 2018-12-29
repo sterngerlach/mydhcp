@@ -39,8 +39,8 @@ bool on_disconnect_server(
 
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_TERMINATE));
     
@@ -125,8 +125,8 @@ bool on_init(
 
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_OFFER));
 
@@ -203,8 +203,8 @@ bool on_offer_received(
     
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_ALLOC_ACK));
 
@@ -293,8 +293,8 @@ bool on_offer_timeout(
 
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_OFFER_RETRY));
 
@@ -346,8 +346,8 @@ bool on_alloc_ack_received(
 
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE));
 
@@ -452,8 +452,8 @@ bool on_alloc_ack_timeout(
     
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_ALLOC_ACK_RETRY));
 
@@ -520,8 +520,8 @@ bool on_half_ttl_passed(
     
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK));
     
@@ -628,8 +628,8 @@ bool on_time_ext_ack_received(
 
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_IP_ADDRESS_IN_USE));
 
@@ -734,8 +734,8 @@ bool on_time_ext_ack_timeout(
     
     print_message(__func__,
                   "client state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   dhcp_client_state_to_string(context->state),
                   dhcp_client_state_to_string(DHCP_CLIENT_STATE_WAIT_TIME_EXT_ACK_RETRY));
     
@@ -918,9 +918,9 @@ bool handle_alrm(
 
         print_message(__func__,
                       "ttl of ip address "
-                      ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
-                      " (mask: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
-                      "): " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
+                      ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
+                      " (mask: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
+                      "): " ANSI_ESCAPE_COLOR_GREEN "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
                       addr_str, mask_str, context->ttl_counter);
     }
 
@@ -1128,7 +1128,7 @@ int main(int argc, char** argv)
     /* クライアントの情報を初期化 */
     if (!initialize_dhcp_client_context(&context, argv[1])) {
         print_error(__func__, "initialize_dhcp_client_context() failed\n");
-        return false;
+        return EXIT_FAILURE;
     }
 
     /* クライアントの実行 */

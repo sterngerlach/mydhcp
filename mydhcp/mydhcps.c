@@ -69,10 +69,10 @@ void on_disconnect_client(
     }
 
     print_message(__func__,
-                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  "client " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
                   " state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_TERMINATE));
@@ -220,10 +220,10 @@ void on_discover_received(
     dump_dhcp_header(stderr, &header);
 
     print_message(__func__,
-                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  "client " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
                   " state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST));
@@ -302,10 +302,10 @@ void on_alloc_request_received(
     dump_dhcp_header(stderr, &header);
 
     print_message(__func__,
-                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  "client " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
                   " state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
@@ -441,10 +441,10 @@ void on_wait_request_timeout(
     dump_dhcp_header(stderr, &header);
 
     print_message(__func__,
-                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET 
+                  "client " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET 
                   " state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_WAIT_REQUEST_RETRY));
@@ -517,10 +517,10 @@ void on_time_ext_request_received(
     dump_dhcp_header(stderr, &header);
 
     print_message(__func__,
-                  "client " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
+                  "client " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
                   " state changed from "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET " to "
-                  ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET "\n",
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET " to "
+                  ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET "\n",
                   inet_ntoa(client->id),
                   dhcp_server_state_to_string(client->state),
                   dhcp_server_state_to_string(DHCP_SERVER_STATE_IP_ADDRESS_IN_USE));
@@ -848,9 +848,9 @@ void handle_alrm(int server_sock)
 
             print_message(__func__,
                           "ttl of ip address "
-                          ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
-                          "(client: " ANSI_ESCAPE_COLOR_RED "%s" ANSI_ESCAPE_COLOR_RESET
-                          "): " ANSI_ESCAPE_COLOR_RED "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
+                          ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
+                          " (client: " ANSI_ESCAPE_COLOR_GREEN "%s" ANSI_ESCAPE_COLOR_RESET
+                          "): " ANSI_ESCAPE_COLOR_GREEN "%" PRIu16 ANSI_ESCAPE_COLOR_RESET "\n",
                           addr_str, id_str, iter->ttl_counter);
         }
 
