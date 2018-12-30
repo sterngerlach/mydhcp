@@ -907,7 +907,7 @@ void handle_dhcp_header(
         print_error(__func__,
                     ANSI_ESCAPE_COLOR_RED
                     "invalid dhcp header: "
-                    "expected length was %zd bytes, but %zd were received"
+                    "expected length was %zu bytes, but %zd were received"
                     ANSI_ESCAPE_COLOR_RESET "\n",
                     sizeof(struct dhcp_header), recv_bytes);
         /* プロトコルに整合しないDHCPヘッダの処理 */

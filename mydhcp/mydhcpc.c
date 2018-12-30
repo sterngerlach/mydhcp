@@ -959,7 +959,7 @@ bool handle_dhcp_header(
     if (recv_bytes != sizeof(struct dhcp_header)) {
         print_error(__func__,
                     "invalid dhcp header: "
-                    "expected length was %zd bytes, but %zd were received\n",
+                    "expected length was %zu bytes, but %zd were received\n",
                     sizeof(struct dhcp_header), recv_bytes);
         handle_event(header, context, DHCP_CLIENT_EVENT_INVALID_HEADER);
         return false;
