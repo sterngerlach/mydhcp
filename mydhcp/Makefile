@@ -21,6 +21,8 @@ OBJECTS_CLIENT = $(addprefix $(OBJDIR)/, \
 	mydhcpc.o mydhcpc_context.o mydhcpc_signal.o mydhcpc_state_machine.o \
 	mydhcp.o util.o)
 
+default: server client
+
 server: $(TARGET_SERVER)
 client: $(TARGET_CLIENT)
 
