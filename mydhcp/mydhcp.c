@@ -54,7 +54,8 @@ const char* dhcp_header_type_to_string(uint8_t type)
         [DHCP_HEADER_TYPE_RELEASE]  = "RELEASE",
     };
 
-    assert(type <= DHCP_HEADER_TYPE_RELEASE);
+    if (type > DHCP_HEADER_TYPE_RELEASE)
+        return "Unknown";
 
     return header_type_str[type] ?
            header_type_str[type] : "Unknown";
@@ -86,13 +87,16 @@ const char* dhcp_header_code_to_string(uint8_t type, uint8_t code)
         [DHCP_HEADER_TYPE_ACK]      = header_code_ack_str,
     };
 
-    assert(type <= DHCP_HEADER_TYPE_ACK);
-    assert((type == DHCP_HEADER_TYPE_OFFER) ?
-           (code <= DHCP_HEADER_CODE_OFFER_NG) :
-           (type == DHCP_HEADER_TYPE_REQUEST) ?
-           (code <= DHCP_HEADER_CODE_REQUEST_TIME_EXT) :
-           (type == DHCP_HEADER_TYPE_ACK) ?
-           (code <= DHCP_HEADER_CODE_ACK_NG) : true);
+    if (type > DHCP_HEADER_TYPE_ACK)
+        return "Unknown";
+
+    if ((type == DHCP_HEADER_TYPE_OFFER) ?
+        (code > DHCP_HEADER_CODE_OFFER_NG) :
+        (type == DHCP_HEADER_TYPE_REQUEST) ?
+        (code > DHCP_HEADER_CODE_REQUEST_TIME_EXT) :
+        (type == DHCP_HEADER_TYPE_ACK) ?
+        (code > DHCP_HEADER_CODE_ACK_NG) : false)
+        return "Unknown";
 
     return header_code_str[type] ?
            header_code_str[type][code] ?

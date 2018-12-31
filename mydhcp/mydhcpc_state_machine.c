@@ -25,7 +25,8 @@ const char* dhcp_client_state_to_string(enum dhcp_client_state state)
         [DHCP_CLIENT_STATE_TERMINATE]               = "TERMINATE",
     };
 
-    assert(state <= DHCP_CLIENT_STATE_TERMINATE);
+    if (state > DHCP_CLIENT_STATE_TERMINATE)
+        return "Unknown";
 
     return client_state_str[state] ?
            client_state_str[state] : "Unknown";
@@ -48,7 +49,8 @@ const char* dhcp_client_event_to_string(enum dhcp_client_event event)
         [DHCP_CLIENT_EVENT_TIMEOUT]         = "TIMEOUT",
     };
 
-    assert(event <= DHCP_CLIENT_EVENT_TIMEOUT);
+    if (event > DHCP_CLIENT_EVENT_TIMEOUT)
+        return "Unknown";
 
     return client_event_str[event] ?
            client_event_str[event] : "Unknown";
