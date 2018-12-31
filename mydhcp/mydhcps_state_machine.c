@@ -44,7 +44,7 @@ const char* dhcp_server_event_to_string(enum dhcp_server_event event)
         [DHCP_SERVER_EVENT_TTL_TIMEOUT]               = "TTL_TIMEOUT",
     };
 
-    if (event <= DHCP_SERVER_EVENT_TTL_TIMEOUT)
+    if (event > DHCP_SERVER_EVENT_TTL_TIMEOUT)
         return "Unknown";
 
     return server_event_str[event] ?
